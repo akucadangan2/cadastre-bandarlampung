@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>WebGIS Cadastre 3D - Kolaborasi Realtime</title>
+    
+    <!-- Library GIS -->
+    <script src="https://unpkg.com/deck.gl@latest/dist.min.js"></script>
+    <script src="https://unpkg.com/maplibre-gl@3.x/dist/maplibre-gl.js"></script>
+    <link href="https://unpkg.com/maplibre-gl@3.x/dist/maplibre-gl.css" rel="stylesheet" />
+    <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
+    
+    <!-- Library Firebase v8 (Compat) untuk kemudahan integrasi di HTML statis -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    
+    <style>
+        body { margin: 0; padding: 0; overflow: hidden; background-color: #111; font-family: 'Segoe UI', Tahoma, sans-serif; }
+        #map { width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; }
+        
+        #tooltip { position: absolute; z-index: 1; pointer-events: none; background: rgba(0, 0, 0, 0.9); color: white; padding: 12px; border-radius: 6px; font-size: 13px; display: none; border: 1px solid #444; }
+        
+        #ui-panel { position: absolute; top: 20px; left: 20px; z-index: 10; background: rgba(25, 25, 25, 0.9); padding: 15px; border-radius: 8px; border: 1px solid #444; color: white; backdrop-filter: blur(5px); width: 280px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); max-height: 90vh; overflow-y: auto; }
+        
+        /* Form Edit Modal */
+        #edit-modal { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #222; color: white; padding: 25px; border-radius: 10px; z-index: 100; border: 1px solid #555; width: 300px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); }
+        #edit-modal h3 { margin-top: 0; color: #00c8ff; border-bottom: 1px solid #444; padding-bottom: 10px; display: flex; justify-content: space-between;}
+        #edit-modal label { display: block; margin: 10px 0 5px; font-size: 13px; color: #ccc;}
+        #edit-modal input, #edit-modal select { width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #444; background: #111; color: white; box-sizing: border-box; }
+        
+        .btn-group { display: flex; gap: 10px; margin-top: 20px; }
+        button { background: #ffaa00; color: #111; border: none; padding: 10px; font-weight: bold; border-radius: 4px; cursor: pointer; width: 100%; transition: 0.2s; margin-top: 5px; }
+        button:hover { background: #ffcc00; }
+        .btn-green { background: #4CAF50; color: white; }
+        .btn-green:hover { background: #45a049; }
+        .btn-blue { background: #008CBA; color: white; }
+        .btn-blue:hover { background: #007bb5; }
+        .btn-red { background: #f44336; color: white; }
+        .btn-red:hover { background: #da190b; }
+
+        select.basemap-select { width: 100%; padding: 8px; background: #333; color: white; border: 1px solid #555; border-radius: 4px; margin-top: 5px; margin-bottom: 15px; }
+
+        /* Status Koneksi */
+        #sync-status { display: inline-block; padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: bold; background: #ffaa00; color: #111; margin-bottom: 10px;}
+
+        .legend { margin-top: 15px; font-size: 12px; border-top: 1px solid #444; padding-top: 10px;}
+        .legend-item { display: flex; align-items: center; margin-bottom: 5px; }
+        .color-box { width: 15px; height: 15px; border-radius: 3px; margin-right: 8px; }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <div id="tooltip"></div>
+    
+    <div id="ui-panel">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h3 style="margin: 0; font-size: 16px;">Editor 3D Cadastre</h3>
+        </div>
+        <p style="margin: 5px 0 10px 0; font-size: 12px; color: #aaa;">Kolaborasi Real-time aktif.</p>
+        
+        <!-- Indikator Firebase -->
+        <div id="sync-status">Menghubungkan Database...</div>
+
+        <label style="font-size: 12px; font-weight: bold; color: #00c8ff;">Pilih Peta Dasar:</label>
+        <select id="basemap-selector" class="basemap-select" onchange="changeBasemap()">
+            <option value="dark">Carto Dark (Gelap)</option>
+            <option value="satellite">Citra Satelit (ESRI)</option>
+            <option value="light">Carto Light (Terang)</option>
+        </select>
+        
+        <div id="total-bangunan" style="font-size: 13px; margin-bottom: 15px; color: #00ffaa;">Memuat data spasial...</div>
+
+        <!-- TOMBOL EXPORT: Satu tombol untuk memuat semua data kembali jika di inginkan. -->
+        <button onclick="downloadUpdatedData()">💾 Download Hasil Akhir (GeoJSON)</button>
+
+        <div class="legend">
+            <div style="margin-bottom: 8px; font-weight: bold; color:#ccc;">Legenda Bangunan:</div>
+            <div class="legend-item"><div class="color-box" style="background: #ffcc00;"></div>Permukiman / Default</div>
+            <div class="legend-item"><div class="color-box" style="background: #ff3333;"></div>Sekolah / Pendidikan</div>
+            <div class="legend-item"><div class="color-box" style="background: #3388ff;"></div>Komersial / Bisnis</div>
+            <div class="legend-item"><div class="color-box" style="background: #aa33ff;"></div>Pemerintahan</div>
+            <div class="legend-item"><div class="color-box" style="background: #33ff88;"></div>Fasilitas Umum</div>
+        </div>
+    </div>
+
+    <!-- MODAL EDIT BANGUNAN LENGKAP -->
+    <div id="edit-modal">
+        <h3>Edit Bangunan <span id="modal-id-text" style="font-size: 10px; color:#555;"></span></h3>
+        
+        <label>Nomor Induk Bidang (NIB):</label>
+        <input type="text" id="input-nib" placeholder="Contoh: 08010101...">
+        
+        <label>Tinggi Bangunan (meter):</label>
+        <input type="number" id="input-tinggi" step="0.1">
+
+        <label>Luas Bangunan (m²): <span style="font-size: 10px; color:#ffcc00;">*Dihitung otomatis jika 0</span></label>
+        <input type="number" id="input-luas" step="0.1">
+        
+        <label>Fungsi Bangunan:</label>
+        <select id="input-fungsi">
+            <option value="Permukiman">Permukiman</option>
+            <option value="Sekolah">Sekolah / Pendidikan</option>
+            <option value="Komersial">Komersial / Bisnis</option>
+            <option value="Pemerintahan">Pemerintahan</option>
+            <option value="Fasum">Fasilitas Umum</option>
+        </select>
+        
+        <div class="btn-group">
+            <button class="btn-blue" onclick="saveBuildingData()">Simpan ke Cloud</button>
+            <button class="btn-red" onclick="closeEditModal()">Batal</button>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // 1. KONFIGURASI FIREBASE ANDA
+        // ==========================================
+        const firebaseConfig = {
+            apiKey: "AIzaSyCCrKjd0u-g6612xjh37Ib808ZZTS3CN7Q",
+            authDomain: "electric-armor-432617-k8.firebaseapp.com",
+            // Pastikan URL Database di bawah ini sesuai dengan yang ada di Firebase Console Anda. 
+            databaseURL: "https://electric-armor-432617-k8-default-rtdb.firebaseio.com", 
+            projectId: "electric-armor-432617-k8",
+            storageBucket: "electric-armor-432617-k8.firebasestorage.app",
+            messagingSenderId: "542873343960",
+            appId: "1:542873343960:web:068a3b615d09374f6f04ad",
+            measurementId: "G-SG9MGH4BKR"
+        };
+        
+        // Inisialisasi Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        // Indikator Koneksi
+        const syncStatus = document.getElementById('sync-status');
+        firebase.database().ref('.info/connected').on('value', function(snap) {
+            if (snap.val() === true) {
+                syncStatus.innerText = "🟢 Tersambung (Realtime)";
+                syncStatus.style.background = "#4CAF50";
+                syncStatus.style.color = "white";
+            } else {
+                syncStatus.innerText = "🔴 Disconnected";
+                syncStatus.style.background = "#f44336";
+                syncStatus.style.color = "white";
+            }
+        });
+
+        // ==========================================
+        // 2. VARIABEL & DECK.GL SETUP
+        // ==========================================
+        let updateCounter = 0;
+        let buildingData = null;        
+        let batasData = null; 
+        let selectedFeature = null;
+        let originalBuildingData = null; // Menyimpan raw data untuk export semua
+
+        const BASEMAPS = {
+            dark: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
+            light: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
+            satellite: { version: 8, sources: { esri: { type: 'raster', tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'], tileSize: 256 } }, layers: [{ id: 'satellite', type: 'raster', source: 'esri' }] }
+        };
+
+        const deckgl = new DeckGL({
+            container: 'map',
+            mapStyle: BASEMAPS.dark,
+            initialViewState: { longitude: 105.3055, latitude: -5.3625, zoom: 15, pitch: 55, bearing: 0 },
+            controller: true,
+            layers: [] 
+        });
+
+        function changeBasemap() { deckgl.setProps({ mapStyle: BASEMAPS[document.getElementById('basemap-selector').value] }); }
+
+        function getBuildingColor(fungsi) {
+            const f = fungsi ? fungsi.toLowerCase() : '';
+            if (f.includes('sekolah') || f.includes('pendidikan')) return [255, 51, 51, 230]; 
+            if (f.includes('komersial') || f.includes('bisnis')) return [51, 136, 255, 230];  
+            if (f.includes('pemerintahan')) return [170, 51, 255, 230]; 
+            if (f.includes('fasum') || f.includes('umum')) return [51, 255, 136, 230]; 
+            return [255, 204, 0, 220]; 
+        }
+
+        // ==========================================
+        // 3. FETCH DATA & FIREBASE LISTENER
+        // ==========================================
+        // Memastikan fetch berjalan asinkron dan terurut
+        async function loadData() {
+            try {
+                const [batasRes, bangunanRes] = await Promise.all([
+                    fetch('./batas_kecamatan.geojson'),
+                    fetch('./export_lod1_dengan_tinggi.geojson')
+                ]);
+
+                if (!batasRes.ok || !bangunanRes.ok) {
+                    throw new Error(`HTTP error! status: batas=${batasRes.status}, bangunan=${bangunanRes.status}`);
+                }
+
+                batasData = await batasRes.json();
+                const bangunanRaw = await bangunanRes.json();
+                
+                // Simpan raw data untuk fungsi export all
+                originalBuildingData = JSON.parse(JSON.stringify(bangunanRaw));
+
+                // Beri ID unik (berdasarkan index) agar dikenali Firebase
+                bangunanRaw.features.forEach((bgn, index) => {
+                    bgn.properties._id = `bgn_sumurbandung_${index}`; 
+                });
+
+                // Cek dan Filter batas dengan aman
+                let bangunanDiDalam = [];
+                if (batasData && batasData.features && batasData.features.length > 0) {
+                     bangunanDiDalam = bangunanRaw.features.filter(bgn => {
+                        let isInside = false;
+                        // Pastikan geometry ada sebelum dicek
+                        if(bgn.geometry) {
+                            for (let bts of batasData.features) {
+                                if (bts.geometry && turf.booleanIntersects(bgn, bts)) { 
+                                    isInside = true; 
+                                    break; 
+                                }
+                            }
+                        }
+                        return isInside;
+                    });
+                } else {
+                     // Jika batasData kosong, render semua bangunan
+                     bangunanDiDalam = bangunanRaw.features;
+                }
+
+                // Jika filter tidak menghasilkan apa-apa (misalnya batas dan bangunan tidak bertampalan)
+                if (bangunanDiDalam.length === 0) {
+                     console.warn("Peringatan: Tidak ada bangunan di dalam poligon batas. Render semua bangunan sebagai fallback.");
+                     bangunanDiDalam = bangunanRaw.features; 
+                }
+
+                bangunanRaw.features = bangunanDiDalam;
+                buildingData = bangunanRaw;
+                document.getElementById('total-bangunan').innerText = `Total Bangunan: ${buildingData.features.length}`;
+
+                // ---- LISTENER FIREBASE REAL-TIME ----
+                // Mengambil dan mendengarkan perubahan dari node "edits_bandar_lampung"
+                db.ref('edits_bandar_lampung').on('value', (snapshot) => {
+                    const cloudData = snapshot.val();
+                    if (cloudData) {
+                        buildingData.features.forEach(bgn => {
+                            const id = bgn.properties._id;
+                            // Timpa data lokal dengan data dari cloud
+                            if (cloudData[id]) {
+                                Object.assign(bgn.properties, cloudData[id]);
+                            }
+                        });
+                        updateCounter++; 
+                        updateMap(); // Render ulang peta otomatis
+                    }
+                });
+
+                updateMap(); // Render pertama kali
+
+            } catch (error) {
+                console.error("Terjadi Kesalahan saat Fetch Data:", error);
+                document.getElementById('total-bangunan').innerText = "Error memuat file GeoJSON. Cek console.";
+                document.getElementById('total-bangunan').style.color = "red";
+            }
+        }
+
+        // Panggil fungsi utama
+        loadData();
+
+        // ==========================================
+        // 4. DECK.GL RENDERER
+        // ==========================================
+        function updateMap() {
+            const layers = [];
+
+            if (batasData && batasData.features) {
+                layers.push(new GeoJsonLayer({
+                    id: 'batas-area', data: batasData,
+                    filled: true, getFillColor: [0, 200, 255, 20], stroked: true, getLineColor: [0, 200, 255, 255], lineWidthMinPixels: 2, pickable: false 
+                }));
+            }
+
+            if (buildingData && buildingData.features) {
+                layers.push(new GeoJsonLayer({
+                    id: 'bangunan-3d', data: buildingData, 
+                    filled: true, extruded: true, wireframe: true, opacity: 0.9,
+                    
+                    getElevation: d => parseFloat(d.properties.height_m) || 3, 
+                    getFillColor: d => getBuildingColor(d.properties.fungsi), 
+                    getLineColor: [255, 255, 255, 80], 
+                    autoHighlight: true, highlightColor: [255, 255, 255, 150], pickable: true,
+                    
+                    updateTriggers: { getElevation: updateCounter, getFillColor: updateCounter },
+                    
+                    onHover: info => {
+                        const tooltip = document.getElementById('tooltip');
+                        if (info.object) {
+                            const p = info.object.properties;
+                            // Kalkulasi luas yang aman jika geometry null
+                            let luas = p.luas_bangunan;
+                            if(!luas) {
+                                try { luas = turf.area(info.object).toFixed(2); } 
+                                catch (e) { luas = "0"; }
+                            }
+                            
+                            tooltip.style.display = 'block';
+                            tooltip.style.left = info.x + 15 + 'px'; tooltip.style.top = info.y + 15 + 'px';
+                            tooltip.style.innerHTML = `
+                                <div style="color: #00c8ff; font-weight: bold; margin-bottom: 5px;">Data Bangunan</div>
+                                <b>NIB:</b> ${p.NIB || '<i>Belum ada</i>'}<br/>
+                                <b>Fungsi:</b> ${p.fungsi || 'Permukiman'}<br/>
+                                <b>Tinggi:</b> ${p.height_m || 0} meter<br/>
+                                <b>Luas:</b> ${luas} m²<br/>
+                                <i style="font-size: 11px; color: #ffaa00; margin-top: 5px; display:block;">Klik untuk edit</i>
+                            `;
+                        } else { tooltip.style.display = 'none'; }
+                    },
+                    
+                    onClick: info => { if (info.object) openEditModal(info.object); }
+                }));
+            }
+            deckgl.setProps({ layers: layers });
+        }
+
+        // ==========================================
+        // 5. MANAJEMEN FORM & SIMPAN KE CLOUD
+        // ==========================================
+        function openEditModal(feature) {
+            selectedFeature = feature;
+            const p = feature.properties;
+            
+            let calculatedArea = 0;
+            try { calculatedArea = turf.area(feature).toFixed(2); } catch (e) {}
+
+            document.getElementById('modal-id-text').innerText = `(ID: ${p._id})`;
+            document.getElementById('input-nib').value = p.NIB || '';
+            document.getElementById('input-tinggi').value = p.height_m || '';
+            document.getElementById('input-luas').value = p.luas_bangunan || calculatedArea;
+            
+            const fungsiSelect = document.getElementById('input-fungsi');
+            if(p.fungsi) {
+                let found = Array.from(fungsiSelect.options).some(opt => opt.value === p.fungsi);
+                fungsiSelect.value = found ? p.fungsi : 'Permukiman';
+            } else {
+                fungsiSelect.value = 'Permukiman';
+            }
+
+            document.getElementById('edit-modal').style.display = 'block';
+        }
+
+        function closeEditModal() {
+            document.getElementById('edit-modal').style.display = 'none';
+            selectedFeature = null;
+        }
+
+        function saveBuildingData() {
+            if (!selectedFeature) return;
+
+            const id = selectedFeature.properties._id;
+            const updatedProps = {
+                NIB: document.getElementById('input-nib').value,
+                height_m: parseFloat(document.getElementById('input-tinggi').value) || 0,
+                luas_bangunan: parseFloat(document.getElementById('input-luas').value) || 0,
+                fungsi: document.getElementById('input-fungsi').value
+            };
+
+            // PUSH KE FIREBASE DATABASE
+            db.ref('edits_bandar_lampung/' + id).update(updatedProps)
+                .then(() => {
+                    console.log("Data berhasil disinkronisasi ke cloud!");
+                    closeEditModal();
+                })
+                .catch((error) => {
+                    alert("Gagal menyimpan ke Cloud. Periksa izin Firebase Database Rules Anda.");
+                    console.error(error);
+                });
+        }
+
+        // ==========================================
+        // 6. EXPORT / DOWNLOAD DATA AKHIR
+        // ==========================================
+        // Jika Anda ingin mengekspor seluruh bangunan (termasuk yang di luar batas) dengan editan terbaru dari Firebase:
+        function downloadUpdatedData() {
+            if (!originalBuildingData) return alert("Data belum siap!");
+            
+            const cleanData = JSON.parse(JSON.stringify(originalBuildingData));
+            
+            // Ambil data terbaru dari cloud untuk disinkronkan ke file export
+            db.ref('edits_bandar_lampung').once('value').then((snapshot) => {
+                const cloudData = snapshot.val();
+                
+                // Iterasi dan update semua fitur sebelum di export, lalu hapus _id internal
+                cleanData.features.forEach((bgn, index) => {
+                     const tempId = `bgn_sumurbandung_${index}`;
+                     if(cloudData && cloudData[tempId]) {
+                         Object.assign(bgn.properties, cloudData[tempId]);
+                     }
+                     // hapus agar bersih
+                     delete bgn.properties._id; 
+                });
+
+                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(cleanData));
+                const a = document.createElement('a');
+                a.href = dataStr; a.download = "hasil_kadaster_kolaborasi_all_final.geojson";
+                document.body.appendChild(a); a.click(); a.remove();
+            });
+        }
+    </script>
+</body>
+</html>
