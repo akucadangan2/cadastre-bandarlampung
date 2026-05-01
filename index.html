@@ -2,14 +2,15 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>WebGIS Cadastre 3D - Kolaborasi Realtime</title>
+    <title>WebGIS Cadastre 3D - Kolaborasi Realtime (Lite)</title>
     
-    <!-- URL LIBRARY SUDAH DIPERBAIKI (Tidak pakai tanda kurung siku Markdown) -->
+    <!-- Library GIS Bersih -->
     <script src="https://unpkg.com/deck.gl@latest/dist.min.js"></script>
     <script src="https://unpkg.com/maplibre-gl@3.x/dist/maplibre-gl.js"></script>
     <link href="https://unpkg.com/maplibre-gl@3.x/dist/maplibre-gl.css" rel="stylesheet" />
     <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
     
+    <!-- Library Firebase Bersih -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     
@@ -90,10 +91,10 @@
     </div>
 
     <script>
+        // Konfigurasi Firebase yang 100% Bersih
         const firebaseConfig = {
             apiKey: "AIzaSyCCrKjd0u-g6612xjh37Ib808ZZTS3CN7Q",
             authDomain: "electric-armor-432617-k8.firebaseapp.com",
-            // URL DATABASE SUDAH DIPERBAIKI
             databaseURL: "https://electric-armor-432617-k8-default-rtdb.firebaseio.com", 
             projectId: "electric-armor-432617-k8",
             storageBucket: "electric-armor-432617-k8.firebasestorage.app",
@@ -123,7 +124,6 @@
         let batasData = null; 
         let selectedFeature = null;
 
-        // URL BASEMAP SUDAH DIPERBAIKI
         const BASEMAPS = {
             dark: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
             light: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
@@ -151,6 +151,7 @@
 
         async function loadData() {
             try {
+                // Fetch data dari file geojson
                 const [batasRes, bangunanRes] = await Promise.all([
                     fetch('./batas_kecamatan.geojson'),
                     fetch('./export_lod1_dengan_tinggi.geojson') 
@@ -159,12 +160,14 @@
                 batasData = await batasRes.json();
                 buildingData = await bangunanRes.json();
 
+                // Injeksi ID unik ke setiap bangunan agar dikenali Firebase
                 buildingData.features.forEach((bgn, index) => {
                     bgn.properties._id = `bgn_sumurbandung_${index}`; 
                 });
 
                 document.getElementById('total-bangunan').innerText = `Total Bangunan: ${buildingData.features.length}`;
 
+                // Listener Firebase Realtime
                 db.ref('edits_bandar_lampung').on('value', (snapshot) => {
                     const cloudData = snapshot.val();
                     if (cloudData) {
@@ -181,7 +184,7 @@
 
             } catch (error) {
                 console.error("Terjadi Kesalahan:", error);
-                document.getElementById('total-bangunan').innerText = "Gagal memuat peta. Cek Console.";
+                document.getElementById('total-bangunan').innerText = "Gagal memuat peta dari Vercel/GitHub.";
                 document.getElementById('total-bangunan').style.color = "red";
             }
         }
