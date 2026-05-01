@@ -4,13 +4,18 @@
     <meta charset="UTF-8">
     <title>WebGIS Cadastre 3D - Kolaborasi Realtime (Lite)</title>
     
-    <!-- Library GIS Bersih -->
-    <script src="https://unpkg.com/deck.gl@latest/dist.min.js"></script>
-    <script src="https://unpkg.com/maplibre-gl@3.x/dist/maplibre-gl.js"></script>
-    <link href="https://unpkg.com/maplibre-gl@3.x/dist/maplibre-gl.css" rel="stylesheet" />
-    <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
+    <!-- MENGGUNAKAN CDN YANG LEBIH STABIL (JSDELIVR & CLOUDFLARE) -->
+    <!-- Turf.js (Untuk hitung luas otomatis) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Turf.js/6.5.0/turf.min.js"></script>
     
-    <!-- Library Firebase Bersih -->
+    <!-- Maplibre GL JS (Mesin rendering basemap) -->
+    <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
+    
+    <!-- Deck.GL (Mesin rendering poligon 3D) -->
+    <script src="https://cdn.jsdelivr.net/npm/deck.gl@9.0.3/dist.min.js"></script>
+    
+    <!-- Firebase (Database) -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     
@@ -42,7 +47,7 @@
     <div id="tooltip"></div>
     
     <div id="ui-panel">
-        <h3 style="margin: 0 0 5px 0; font-size: 16px;">Editor 3D Cadastre (Lite)</h3>
+        <h3 style="margin: 0 0 5px 0; font-size: 16px;">Editor 3D Cadastre</h3>
         <p style="margin: 5px 0 10px 0; font-size: 12px; color: #aaa;">Kolaborasi Real-time aktif.</p>
         
         <div id="sync-status">Menghubungkan Database...</div>
@@ -54,7 +59,7 @@
             <option value="light">Carto Light (Terang)</option>
         </select>
         
-        <div id="total-bangunan" style="font-size: 13px; margin-bottom: 15px; color: #00ffaa;">Memuat data ringan...</div>
+        <div id="total-bangunan" style="font-size: 13px; margin-bottom: 15px; color: #00ffaa;">Memuat data spasial...</div>
 
         <button onclick="downloadUpdatedData()">💾 Download Hasil Akhir</button>
 
@@ -91,7 +96,6 @@
     </div>
 
     <script>
-        // Konfigurasi Firebase yang 100% Bersih
         const firebaseConfig = {
             apiKey: "AIzaSyCCrKjd0u-g6612xjh37Ib808ZZTS3CN7Q",
             authDomain: "electric-armor-432617-k8.firebaseapp.com",
@@ -130,7 +134,7 @@
             satellite: { version: 8, sources: { esri: { type: 'raster', tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'], tileSize: 256 } }, layers: [{ id: 'satellite', type: 'raster', source: 'esri' }] }
         };
 
-        const deckgl = new DeckGL({
+        const deckgl = new deck.DeckGL({
             container: 'map',
             mapStyle: BASEMAPS.dark,
             initialViewState: { longitude: 105.3055, latitude: -5.3625, zoom: 15, pitch: 55, bearing: 0 },
@@ -151,23 +155,24 @@
 
         async function loadData() {
             try {
-                // Fetch data dari file geojson
+                // Fetch data dari file geojson lokal (pastikan path-nya benar di GitHub)
                 const [batasRes, bangunanRes] = await Promise.all([
                     fetch('./batas_kecamatan.geojson'),
                     fetch('./export_lod1_dengan_tinggi.geojson') 
                 ]);
 
+                if (!batasRes.ok || !bangunanRes.ok) throw new Error("Gagal mengambil data GeoJSON. Cek apakah nama file sudah persis sama.");
+
                 batasData = await batasRes.json();
                 buildingData = await bangunanRes.json();
 
-                // Injeksi ID unik ke setiap bangunan agar dikenali Firebase
+                // Beri ID unik
                 buildingData.features.forEach((bgn, index) => {
                     bgn.properties._id = `bgn_sumurbandung_${index}`; 
                 });
 
                 document.getElementById('total-bangunan').innerText = `Total Bangunan: ${buildingData.features.length}`;
 
-                // Listener Firebase Realtime
                 db.ref('edits_bandar_lampung').on('value', (snapshot) => {
                     const cloudData = snapshot.val();
                     if (cloudData) {
@@ -184,7 +189,7 @@
 
             } catch (error) {
                 console.error("Terjadi Kesalahan:", error);
-                document.getElementById('total-bangunan').innerText = "Gagal memuat peta dari Vercel/GitHub.";
+                document.getElementById('total-bangunan').innerText = "Gagal memuat peta. Cek Console.";
                 document.getElementById('total-bangunan').style.color = "red";
             }
         }
@@ -195,14 +200,14 @@
             const layers = [];
 
             if (batasData && batasData.features) {
-                layers.push(new GeoJsonLayer({
+                layers.push(new deck.GeoJsonLayer({
                     id: 'batas-area', data: batasData,
                     filled: true, getFillColor: [0, 200, 255, 20], stroked: true, getLineColor: [0, 200, 255, 255], lineWidthMinPixels: 2, pickable: false 
                 }));
             }
 
             if (buildingData && buildingData.features) {
-                layers.push(new GeoJsonLayer({
+                layers.push(new deck.GeoJsonLayer({
                     id: 'bangunan-3d', data: buildingData, 
                     filled: true, extruded: true, wireframe: true, opacity: 0.9,
                     getElevation: d => parseFloat(d.properties.height_m) || 3, 
