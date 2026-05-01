@@ -40,8 +40,7 @@
         select.basemap-select { width: 100%; padding: 8px; background: #333; color: white; border: 1px solid #555; border-radius: 6px; margin-top: 5px; margin-bottom: 10px; }
         
         /* Status & Tracking */
-        .status-badge { display: inline-block; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: bold; margin-bottom: 5px; width: 100%; box-sizing: border-box; text-align: center;}
-        #online-users-box { background: rgba(0,0,0,0.3); padding: 8px; border-radius: 6px; margin-bottom: 15px; font-size: 12px; border: 1px solid #444;}
+        .status-badge { display: inline-block; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: bold; margin-bottom: 10px; width: 100%; box-sizing: border-box; text-align: center;}
         
         /* Panel Khusus Mode Gambar */
         #draw-panel { display: none; background: rgba(255, 60, 60, 0.1); border: 1px solid #f44336; padding: 10px; border-radius: 8px; margin-top: 15px; text-align: center; }
@@ -50,9 +49,8 @@
         /* --- RESPONSIVE MOBILE TWEAKS --- */
         @media (max-width: 600px) {
             #ui-panel { width: 90%; left: 5%; top: 10px; max-height: 40vh; padding: 12px; box-sizing: border-box; }
-            /* Ubah modal jadi bottom-sheet di HP agar mudah diketik pakai jempol */
             #edit-modal { top: auto; bottom: 0; left: 0; transform: none; width: 100%; border-radius: 20px 20px 0 0; box-sizing: border-box; padding: 20px; padding-bottom: 40px; }
-            .legend { display: none; } /* Sembunyikan legenda di HP agar hemat ruang */
+            .legend { display: none; }
             .btn-group { flex-direction: column; gap: 5px;}
         }
     </style>
@@ -65,11 +63,6 @@
         <h3 style="margin: 0 0 5px 0; font-size: 16px;">Editor 3D Cadastre Pro</h3>
         
         <div id="sync-status" class="status-badge" style="background: #ffaa00; color: #111;">Menghubungkan Server...</div>
-        
-        <div id="online-users-box">
-            <b style="color:#00ffaa;">User Aktif:</b>
-            <div id="online-users-list" style="color:#ccc; margin-top:3px;">Memuat...</div>
-        </div>
 
         <select id="basemap-selector" class="basemap-select" onchange="changeBasemap()">
             <option value="satellite">Citra Satelit (ESRI)</option>
@@ -77,10 +70,11 @@
             <option value="light">Carto Light (Terang)</option>
         </select>
         
-        <div id="total-bangunan" style="font-size: 13px; margin-bottom: 10px; color: #00c8ff;">Memproses data...</div>
+        <div id="total-bangunan" style="font-size: 13px; margin-bottom: 10px; color: #00ffaa; font-weight: bold;">Menghitung objek dalam batas...</div>
 
+        <button class="btn-blue" onclick="flyToUser()" style="margin-bottom: 5px; background: #3388ff;">📍 Fokus ke Lokasi Saya</button>
         <button onclick="downloadUpdatedData()">💾 Download GeoJSON Final</button>
-        <button class="btn-blue" onclick="toggleDrawMode()" id="btn-draw" style="margin-top: 15px;">✏️ Digitasi Bangunan Baru</button>
+        <button class="btn-green" onclick="toggleDrawMode()" id="btn-draw" style="margin-top: 10px;">✏️ Digitasi Bangunan Baru</button>
 
         <div id="draw-panel">
             <p>Klik di peta untuk membuat titik poligon. Minimal 3 titik.</p>
@@ -146,31 +140,15 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        // NAMA USER & TRACKING ONLINE
-        const userName = prompt("Masukkan nama Anda (untuk absensi live):", "Surveyor-" + Math.floor(Math.random() * 100));
-        const userId = 'user_' + Date.now();
-        const myPresenceRef = db.ref('users_online/' + userId);
-
         firebase.database().ref('.info/connected').on('value', function(snap) {
             const syncStatus = document.getElementById('sync-status');
             if (snap.val() === true) {
                 syncStatus.innerText = "🟢 Tersambung (Realtime)";
                 syncStatus.style.background = "#4CAF50"; syncStatus.style.color = "white";
-                
-                // Tambah diri ke list online, hapus otomatis kalau close tab/mati internet
-                myPresenceRef.onDisconnect().remove();
-                myPresenceRef.set({ name: userName || "Anonim", time: Date.now() });
             } else {
                 syncStatus.innerText = "🔴 Offline / Terputus";
                 syncStatus.style.background = "#f44336"; syncStatus.style.color = "white";
             }
-        });
-
-        // Tampilkan List User Online
-        db.ref('users_online').on('value', (snap) => {
-            const users = snap.val() || {};
-            const names = Object.values(users).map(u => u.name);
-            document.getElementById('online-users-list').innerText = names.length > 0 ? names.join(', ') : "Hanya Anda";
         });
 
         // VARIABEL GLOBAL
@@ -183,6 +161,7 @@
         let userLocation = null;
         let isDrawing = false;
         let drawPoints = [];
+        let isFirstLocationFixed = false;
 
         // BASEMAPS
         const BASEMAPS = {
@@ -194,7 +173,7 @@
         // SETUP DECK.GL
         const deckgl = new deck.DeckGL({
             container: 'map',
-            mapStyle: BASEMAPS.satellite, // Default satelit agar mudah digitasi lapangan
+            mapStyle: BASEMAPS.satellite,
             initialViewState: { longitude: 105.3055, latitude: -5.3625, zoom: 16, pitch: 45, bearing: 0 },
             controller: true,
             layers: [],
@@ -205,7 +184,7 @@
         function changeBasemap() { deckgl.setProps({ mapStyle: BASEMAPS[document.getElementById('basemap-selector').value] }); }
 
         function getBuildingColor(fungsi, isNew) {
-            if (isNew) return [255, 100, 100, 255]; // Warna beda (merah muda) untuk bangunan baru digambar
+            if (isNew) return [255, 100, 100, 255]; 
             const f = fungsi ? fungsi.toLowerCase() : '';
             if (f.includes('sekolah') || f.includes('pendidikan')) return [255, 51, 51, 230]; 
             if (f.includes('komersial') || f.includes('bisnis')) return [51, 136, 255, 230];  
@@ -219,14 +198,70 @@
             navigator.geolocation.watchPosition((position) => {
                 userLocation = [position.coords.longitude, position.coords.latitude];
                 updateMap(); // Render ulang peta dengan posisi baru
+                
+                // Jika baru pertama kali dapat GPS, langsung terbang ke lokasi tersebut
+                if (!isFirstLocationFixed) {
+                    flyToUser();
+                    isFirstLocationFixed = true;
+                }
             }, (error) => {
-                console.log("GPS Tertutup / Tidak diizinkan.");
-            }, { enableHighAccuracy: true });
+                console.log("GPS Tertutup / Error: ", error.message);
+            }, { enableHighAccuracy: true, maximumAge: 10000, timeout: 5000 });
+        } else {
+            alert("Browser kamu tidak mendukung GPS.");
+        }
+
+        // FUNGSI UNTUK FOKUS KAMERA KE GPS
+        function flyToUser() {
+            if (userLocation) {
+                deckgl.setProps({
+                    initialViewState: {
+                        longitude: userLocation[0],
+                        latitude: userLocation[1],
+                        zoom: 19,
+                        pitch: 45,
+                        bearing: 0,
+                        transitionDuration: 1000 // Animasi transisi 1 detik
+                    }
+                });
+            } else {
+                alert("Mencari titik GPS, pastikan GPS aktif dan diizinkan browser.");
+            }
+        }
+
+        // MENGHITUNG BANGUNAN YANG HANYA ADA DI DALAM POLIGON
+        function countBuildingsInBoundary() {
+            if (!batasData || !batasData.features || batasData.features.length === 0) {
+                document.getElementById('total-bangunan').innerText = `Total Objek: ${buildingData.features.length}`;
+                return;
+            }
+
+            let count = 0;
+            // Looping semua bangunan
+            for (let i = 0; i < buildingData.features.length; i++) {
+                const bgn = buildingData.features[i];
+                let isInside = false;
+                try {
+                    // Cari titik tengah (centroid) dari bangunan
+                    const pt = turf.centroid(bgn);
+                    // Cek apakah titik tersebut ada di dalam salah satu poligon batas
+                    for (let j = 0; j < batasData.features.length; j++) {
+                        const poly = batasData.features[j];
+                        if (turf.booleanPointInPolygon(pt, poly)) {
+                            isInside = true;
+                            break;
+                        }
+                    }
+                } catch(e) { /* Abaikan jika geometri tidak valid */ }
+                
+                if (isInside) count++;
+            }
+
+            document.getElementById('total-bangunan').innerText = `Objek di dalam Batas: ${count}`;
         }
 
         async function loadData() {
             try {
-                // Gunakan try-catch per fetch agar web tetap jalan jika file lokal ga ada
                 try {
                     const batasRes = await fetch('./batas_kecamatan.geojson');
                     if (batasRes.ok) batasData = await batasRes.json();
@@ -241,6 +276,8 @@
                     }
                 } catch(e) { console.log("Bangunan eksisting tidak dimuat, mulai dari kosong."); }
 
+                countBuildingsInBoundary(); // Hitung pertama kali
+
                 // LISTEN KE FIREBASE: EDIT BANGUNAN LAMA
                 db.ref('edits_bandar_lampung').on('value', (snapshot) => {
                     const cloudData = snapshot.val();
@@ -252,19 +289,18 @@
                     }
                 });
 
-                // LISTEN KE FIREBASE: BANGUNAN BARU (HASIL DIGITASI ORANG LAIN/KITA)
+                // LISTEN KE FIREBASE: BANGUNAN BARU
                 db.ref('new_buildings_bandar_lampung').on('value', (snapshot) => {
                     const newBldgs = snapshot.val();
                     if (newBldgs) {
-                        // Bersihkan feature baru yg lama dari array agar tidak duplikat
                         buildingData.features = buildingData.features.filter(f => !f.properties.isNew);
-                        // Masukkan semua data baru dari cloud
                         Object.values(newBldgs).forEach(feature => {
                             buildingData.features.push(feature);
                         });
-                        updateCounter++; updateMap();
+                        updateCounter++; 
+                        updateMap();
+                        countBuildingsInBoundary(); // Hitung ulang setiap ada bangunan baru
                     }
-                    document.getElementById('total-bangunan').innerText = `Total Objek: ${buildingData.features.length}`;
                 });
 
                 updateMap(); 
@@ -276,13 +312,11 @@
 
         // HANDLE KLIK PADA PETA
         function handleMapClick(info) {
-            // Jika sedang mode gambar, tangkap koordinatnya
             if (isDrawing && info.coordinate) {
                 drawPoints.push(info.coordinate);
                 updateMap();
                 return;
             }
-            // Jika mode normal, buka modal edit jika klik bangunan
             if (info.object) openEditModal(info.object);
         }
 
@@ -328,19 +362,6 @@
                 }));
             }
 
-            // Layer Posisi GPS Kita (Titik Biru)
-            if (userLocation) {
-                layers.push(new deck.ScatterplotLayer({
-                    id: 'lokasi-user',
-                    data: [{ position: userLocation }],
-                    getPosition: d => d.position,
-                    getFillColor: [0, 150, 255, 255],
-                    getRadius: 8,
-                    radiusUnits: 'meters',
-                    stroked: true, getLineColor: [255, 255, 255, 255], lineWidthMinPixels: 2
-                }));
-            }
-
             // Layer Visualisasi Saat Menggambar Digitasi
             if (isDrawing && drawPoints.length > 0) {
                 layers.push(new deck.ScatterplotLayer({
@@ -361,10 +382,23 @@
                 }
             }
 
+            // Layer Posisi GPS Kita (Titik Biru di-render paling akhir agar posisinya di atas bangunan)
+            if (userLocation) {
+                layers.push(new deck.ScatterplotLayer({
+                    id: 'lokasi-user',
+                    data: [{ position: userLocation }],
+                    getPosition: d => d.position,
+                    getFillColor: [0, 150, 255, 255],
+                    getRadius: 10,
+                    radiusUnits: 'meters',
+                    stroked: true, getLineColor: [255, 255, 255, 255], lineWidthMinPixels: 3,
+                    updateTriggers: { getPosition: userLocation }
+                }));
+            }
+
             deckgl.setProps({ layers: layers });
         }
 
-        // FUNGSI DIGITASI (MENGGAMBAR POLIGON)
         function toggleDrawMode() {
             isDrawing = true; drawPoints = [];
             document.getElementById('draw-panel').style.display = 'block';
@@ -381,22 +415,17 @@
 
         function finishDrawing() {
             if (drawPoints.length < 3) return alert("Minimal buat 3 titik untuk jadi bangunan!");
-            
-            // Tutup poligon (titik akhir = titik awal)
             const polyCoords = [...drawPoints, drawPoints[0]];
-            
-            // Buat objek GeoJSON baru
             const newFeature = turf.polygon([polyCoords], {
                 _id: 'bgn_baru_' + Date.now(),
-                isNew: true, // penanda ini hasil digitasi baru
+                isNew: true, 
                 NIB: '', height_m: 4, luas_bangunan: 0, fungsi: 'Permukiman'
             });
 
-            cancelDrawing(); // Keluar dari mode gambar
-            openEditModal(newFeature); // Langsung buka form atribut
+            cancelDrawing(); 
+            openEditModal(newFeature); 
         }
 
-        // FUNGSI MODAL & SIMPAN DATA
         function openEditModal(feature) {
             selectedFeature = feature;
             const p = feature.properties;
@@ -432,25 +461,19 @@
             };
 
             if (isNew) {
-                // Jika bangunan baru, simpan *keseluruhan objek* (Geometri + Atribut) ke tabel baru
                 selectedFeature.properties = { ...selectedFeature.properties, ...updatedProps };
                 db.ref('new_buildings_bandar_lampung/' + id).set(selectedFeature)
                   .then(() => closeEditModal()).catch(e => alert("Gagal Simpan GPS!"));
             } else {
-                // Jika bangunan lama, update atributnya saja
                 db.ref('edits_bandar_lampung/' + id).update(updatedProps)
                   .then(() => closeEditModal()).catch(e => alert("Gagal Simpan!"));
             }
         }
 
-        // DOWNLOAD GABUNGAN (BANGUNAN LAMA + BARU)
         function downloadUpdatedData() {
             if (!buildingData || buildingData.features.length === 0) return alert("Data kosong!");
             const cleanData = JSON.parse(JSON.stringify(buildingData));
-            
-            // Rapihkan properties sebelum didownload
             cleanData.features.forEach(bgn => { delete bgn.properties._id; delete bgn.properties.isNew; });
-            
             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(cleanData));
             const a = document.createElement('a');
             a.href = dataStr; a.download = "hasil_kadaster_pro_final.geojson";
