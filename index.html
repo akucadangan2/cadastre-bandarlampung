@@ -2,20 +2,15 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>WebGIS Cadastre 3D - Kolaborasi Realtime (Lite)</title>
+    <title>WebGIS Cadastre 3D - Kolaborasi Realtime</title>
     
-    <!-- MENGGUNAKAN CDN YANG LEBIH STABIL (JSDELIVR & CLOUDFLARE) -->
-    <!-- Turf.js (Untuk hitung luas otomatis) -->
+    <!-- Library GIS (CDN Stabil) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Turf.js/6.5.0/turf.min.js"></script>
-    
-    <!-- Maplibre GL JS (Mesin rendering basemap) -->
     <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
-    
-    <!-- Deck.GL (Mesin rendering poligon 3D) -->
     <script src="https://cdn.jsdelivr.net/npm/deck.gl@9.0.3/dist.min.js"></script>
     
-    <!-- Firebase (Database) -->
+    <!-- Library Firebase -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     
@@ -59,7 +54,7 @@
             <option value="light">Carto Light (Terang)</option>
         </select>
         
-        <div id="total-bangunan" style="font-size: 13px; margin-bottom: 15px; color: #00ffaa;">Memuat data spasial...</div>
+        <div id="total-bangunan" style="font-size: 13px; margin-bottom: 15px; color: #00ffaa;">Memproses filter poligon...</div>
 
         <button onclick="downloadUpdatedData()">💾 Download Hasil Akhir</button>
 
@@ -134,6 +129,7 @@
             satellite: { version: 8, sources: { esri: { type: 'raster', tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'], tileSize: 256 } }, layers: [{ id: 'satellite', type: 'raster', source: 'esri' }] }
         };
 
+        // PERBAIKAN FATAL: Memanggil DeckGL dengan "deck.DeckGL"
         const deckgl = new deck.DeckGL({
             container: 'map',
             mapStyle: BASEMAPS.dark,
@@ -155,23 +151,50 @@
 
         async function loadData() {
             try {
-                // Fetch data dari file geojson lokal (pastikan path-nya benar di GitHub)
                 const [batasRes, bangunanRes] = await Promise.all([
                     fetch('./batas_kecamatan.geojson'),
                     fetch('./export_lod1_dengan_tinggi.geojson') 
                 ]);
 
-                if (!batasRes.ok || !bangunanRes.ok) throw new Error("Gagal mengambil data GeoJSON. Cek apakah nama file sudah persis sama.");
+                if (!batasRes.ok || !bangunanRes.ok) throw new Error("Gagal mengambil data GeoJSON.");
 
                 batasData = await batasRes.json();
-                buildingData = await bangunanRes.json();
+                const bangunanRaw = await bangunanRes.json();
 
                 // Beri ID unik
-                buildingData.features.forEach((bgn, index) => {
+                bangunanRaw.features.forEach((bgn, index) => {
                     bgn.properties._id = `bgn_sumurbandung_${index}`; 
                 });
 
-                document.getElementById('total-bangunan').innerText = `Total Bangunan: ${buildingData.features.length}`;
+                // PROSES FILTER SPASIAL (HANYA BANGUNAN DI DALAM POLIGON)
+                let bangunanDiDalam = [];
+                if (batasData && batasData.features && batasData.features.length > 0) {
+                     bangunanDiDalam = bangunanRaw.features.filter(bgn => {
+                        let isInside = false;
+                        if(bgn.geometry) {
+                            for (let bts of batasData.features) {
+                                if (bts.geometry && turf.booleanIntersects(bgn, bts)) { 
+                                    isInside = true; 
+                                    break; 
+                                }
+                            }
+                        }
+                        return isInside;
+                    });
+                } else {
+                     bangunanDiDalam = bangunanRaw.features;
+                }
+
+                if (bangunanDiDalam.length === 0) {
+                     console.warn("Tidak ada bangunan di dalam batas.");
+                     bangunanDiDalam = bangunanRaw.features; 
+                }
+
+                bangunanRaw.features = bangunanDiDalam;
+                buildingData = bangunanRaw;
+                
+                // UPDATE UI DENGAN JUMLAH BANGUNAN DALAM POLIGON
+                document.getElementById('total-bangunan').innerText = `Total Bangunan (Dalam Batas): ${buildingData.features.length}`;
 
                 db.ref('edits_bandar_lampung').on('value', (snapshot) => {
                     const cloudData = snapshot.val();
