@@ -87,7 +87,7 @@
                 <span id="count-bidang" style="color: white; font-weight: bold;">Memuat...</span>
             </div>
             <div class="stat-row">
-                <span style="color: #ffaa00; font-weight: bold;">🏢 Total Bangunan (Dalam Area):</span>
+                <span style="color: #ffaa00; font-weight: bold;">🏢 Bangunan (Dalam Area):</span>
                 <span id="count-bangunan" style="color: white; font-weight: bold;">Memuat...</span>
             </div>
         </div>
@@ -230,8 +230,8 @@
         // VARIABEL GLOBAL
         let updateCounter = 0;
         let buildingData = { type: "FeatureCollection", features: [] };        
-        let bidangData = null; // Layer persil tanah
-        let batasData = null; // Layer batas kecamatan/area
+        let bidangData = null; 
+        let batasData = null; 
         let selectedFeature = null;
 
         let isDrawing = false;
@@ -285,43 +285,44 @@
 
         async function loadData() {
             try {
-                // LOAD BATAS WILAYAH
+                // 1. LOAD BATAS WILAYAH (Tanpa prefix folder)
                 try {
-                    const batasRes = await fetch('./cadastre-bandarlampung/batas_kecamatan.geojson');
+                    const batasRes = await fetch('./batas_kecamatan.geojson');
                     if (batasRes.ok) batasData = await batasRes.json();
                 } catch(e) { console.log("Batas kecamatan tidak dimuat."); }
 
-                // LOAD BIDANG TANAH
+                // 2. LOAD BIDANG TANAH (Tanpa prefix folder)
                 try {
-                    const bidangRes = await fetch('./cadastre-bandarlampung/bidang_tanah.geojson');
+                    const bidangRes = await fetch('./bidang_tanah.geojson');
                     if (bidangRes.ok) {
                         bidangData = await bidangRes.json();
                     }
                 } catch(e) { console.log("File bidang_tanah.geojson tidak ditemukan."); }
 
-                // LOAD BANGUNAN LAMA
+                // 3. LOAD BANGUNAN LAMA (Tanpa prefix folder)
                 try {
                     const bangunanRes = await fetch('./export_lod1_dengan_tinggi.geojson');
                     if (bangunanRes.ok) {
                         const bangunanRaw = await bangunanRes.json();
                         
-                        // FILTER SPASIAL: Hanya ambil bangunan yang ada di dalam poligon batas_kecamatan
+                        // FILTER SPASIAL: Hanya merender bangunan yang centroidnya masuk di dalam batas kecamatan
                         let bangunanDiDalam = [];
                         if (batasData && batasData.features && batasData.features.length > 0) {
                             bangunanDiDalam = bangunanRaw.features.filter(bgn => {
                                 let isInside = false;
-                                if(bgn.geometry) {
+                                try {
+                                    const pt = turf.centroid(bgn);
                                     for (let bts of batasData.features) {
-                                        if (bts.geometry && turf.booleanIntersects(bgn, bts)) { 
+                                        if (turf.booleanPointInPolygon(pt, bts)) { 
                                             isInside = true; 
                                             break; 
                                         }
                                     }
-                                }
+                                } catch(e) {}
                                 return isInside;
                             });
                         } else {
-                            bangunanDiDalam = bangunanRaw.features; // Jika batas tidak ada, tampilkan semua
+                            bangunanDiDalam = bangunanRaw.features;
                         }
 
                         bangunanDiDalam.forEach((bgn, idx) => { bgn.properties._id = `bgn_lama_${idx}`; });
@@ -329,7 +330,8 @@
                     }
                 } catch(e) { console.log("Bangunan eksisting tidak dimuat."); }
                 
-                updateStatistics(); // Panggil update stats setelah data selesai di-load & difilter
+                // Update statistik setelah semua difilter
+                updateStatistics();
 
                 // LISTEN FIREBASE
                 db.ref('edits_bandar_lampung').on('value', (snapshot) => {
@@ -365,11 +367,9 @@
                 return;
             }
             if (info.object) {
-                // Jika yang di-klik adalah layer Bidang Tanah
                 if (info.layer && info.layer.id === 'layer-bidang-tanah') {
                     openBidangInfo(info.object);
                 } 
-                // Jika yang di-klik adalah layer Bangunan 3D
                 else if (info.layer && info.layer.id === 'bangunan-3d') {
                     openEditModal(info.object);
                 }
@@ -380,11 +380,9 @@
         function openBidangInfo(feature) {
             const p = feature.properties;
             const container = document.getElementById('bidang-attributes');
-            container.innerHTML = ''; // Bersihkan isi sebelumnya
+            container.innerHTML = ''; 
 
-            let hasData = false;
-            
-            // 1. Tampilkan Luas Secara Otomatis (Jika atribut Luas tidak ada, hitung dengan Turf.js)
+            // KALKULASI LUAS OTOMATIS
             let luasBidang = p.Luas || p.LUAS || p.luas;
             if (!luasBidang) {
                 try {
@@ -393,15 +391,15 @@
                     luasBidang = "-";
                 }
             }
+
             container.innerHTML += `
                 <div class="attr-row">
                     <span class="attr-key" style="color:#00ffff;">LUAS BIDANG (m²)</span>
                     <span class="attr-val" style="color:#00ffff;">${luasBidang}</span>
                 </div>
             `;
-            hasData = true;
 
-            // 2. Looping properti lainnya dari file GeoJSON
+            let hasData = true;
             for (let key in p) {
                 if (key !== 'OBJECTID' && key !== 'Shape_Leng' && key !== 'Shape_Area' && key.toLowerCase() !== 'luas') {
                     const value = (p[key] !== null && p[key] !== '') ? p[key] : '-';
@@ -411,15 +409,9 @@
                             <span class="attr-val">${value}</span>
                         </div>
                     `;
-                    hasData = true;
                 }
             }
 
-            if (!hasData) {
-                container.innerHTML = '<div style="text-align:center; color:#888; margin-top:20px;">Tidak ada atribut tabel pada bidang ini.</div>';
-            }
-
-            // Tampilkan popup
             document.getElementById('bidang-info-modal').style.display = 'flex';
         }
 
@@ -436,15 +428,14 @@
                 }));
             }
 
-            // UBAH AGAR BIDANG TANAH BISA DI-KLIK (pickable: true) & ADA EFEK HOVER
             if (bidangData) {
                 layers.push(new deck.GeoJsonLayer({
                     id: 'layer-bidang-tanah', 
                     data: bidangData,
                     filled: true, getFillColor: [0, 255, 255, 0], 
                     stroked: true, getLineColor: [0, 255, 255, 200], lineWidthMinPixels: 1.5, 
-                    pickable: !isDrawing, // Bisa diklik
-                    autoHighlight: true, highlightColor: [0, 255, 255, 80] // Efek menyala saat di-hover
+                    pickable: !isDrawing, 
+                    autoHighlight: true, highlightColor: [0, 255, 255, 80] 
                 }));
             }
 
