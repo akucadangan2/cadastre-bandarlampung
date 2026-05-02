@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>WebGIS Cadastre 3D - Pro Version</title>
+    <title>WebGIS Cadastre 3D - Final Pro</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Turf.js/6.5.0/turf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
@@ -17,39 +17,44 @@
         body { margin: 0; padding: 0; overflow: hidden; background-color: #111; font-family: 'Segoe UI', Tahoma, sans-serif; }
         #map { width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; }
         
-        /* Panel Utama */
-        #ui-panel { position: absolute; top: 20px; left: 20px; z-index: 10; background: rgba(25, 25, 25, 0.9); padding: 15px; border-radius: 12px; border: 1px solid #444; color: white; backdrop-filter: blur(10px); width: 280px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); max-height: 85vh; overflow-y: auto; }
+        /* Panel Utama ala UI Modern */
+        #ui-panel { position: absolute; top: 20px; left: 20px; z-index: 10; background: rgba(20, 20, 20, 0.95); padding: 18px; border-radius: 12px; border: 1px solid #333; color: white; backdrop-filter: blur(12px); width: 300px; box-shadow: 0 8px 32px rgba(0,0,0,0.6); max-height: 90vh; overflow-y: auto; }
         
         /* Modal Edit */
-        #edit-modal { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #222; color: white; padding: 25px; border-radius: 12px; z-index: 100; border: 1px solid #555; width: 340px; box-shadow: 0 10px 40px rgba(0,0,0,0.8); }
-        #edit-modal h3 { margin-top: 0; color: #00c8ff; border-bottom: 1px solid #444; padding-bottom: 10px; }
-        #edit-modal label { display: block; margin: 10px 0 5px; font-size: 13px; color: #ccc;}
-        #edit-modal input, #edit-modal select { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #555; background: #111; color: white; box-sizing: border-box; font-size: 14px;}
+        #edit-modal { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #1a1a1a; color: white; padding: 25px; border-radius: 12px; z-index: 100; border: 1px solid #444; width: 340px; box-shadow: 0 15px 50px rgba(0,0,0,0.9); }
+        #edit-modal h3 { margin-top: 0; color: #00c8ff; border-bottom: 1px solid #333; padding-bottom: 12px; font-size: 18px; }
+        #edit-modal label { display: block; margin: 12px 0 6px; font-size: 13px; color: #bbb;}
+        #edit-modal input, #edit-modal select { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #444; background: #0d0d0d; color: white; box-sizing: border-box; font-size: 14px;}
+        #edit-modal input:focus, #edit-modal select:focus { outline: none; border-color: #00c8ff; }
         
         /* Tooltip & Utilities */
-        #tooltip { position: absolute; z-index: 1; pointer-events: none; background: rgba(0, 0, 0, 0.9); color: white; padding: 12px; border-radius: 6px; font-size: 13px; display: none; border: 1px solid #444; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
-        .btn-group { display: flex; gap: 10px; margin-top: 20px; }
-        button { background: #ffaa00; color: #111; border: none; padding: 10px; font-weight: bold; border-radius: 6px; cursor: pointer; width: 100%; transition: 0.2s; margin-top: 5px; font-size: 14px;}
-        button:hover { background: #ffcc00; }
-        .btn-blue { background: #008CBA; color: white; }
-        .btn-blue:hover { background: #007bb5; }
-        .btn-red { background: #f44336; color: white; }
-        .btn-red:hover { background: #da190b; }
-        .btn-green { background: #4CAF50; color: white; }
-        .btn-green:hover { background: #45a049; }
-        select.basemap-select { width: 100%; padding: 8px; background: #333; color: white; border: 1px solid #555; border-radius: 6px; margin-top: 5px; margin-bottom: 10px; }
+        #tooltip { position: absolute; z-index: 1; pointer-events: none; background: rgba(0, 0, 0, 0.85); color: white; padding: 12px; border-radius: 8px; font-size: 13px; display: none; border: 1px solid #444; box-shadow: 0 4px 15px rgba(0,0,0,0.5); backdrop-filter: blur(4px); }
+        .btn-group { display: flex; gap: 10px; margin-top: 25px; }
+        button { background: #ffaa00; color: #111; border: none; padding: 12px; font-weight: bold; border-radius: 6px; cursor: pointer; width: 100%; transition: 0.2s; font-size: 14px;}
+        button:hover { filter: brightness(1.1); transform: translateY(-1px); }
+        .btn-blue { background: #007aff; color: white; }
+        .btn-red { background: #ff3b30; color: white; }
+        .btn-green { background: #34c759; color: white; }
+        select.basemap-select { width: 100%; padding: 10px; background: #222; color: white; border: 1px solid #444; border-radius: 6px; margin-top: 5px; margin-bottom: 15px; }
         
-        .status-badge { display: inline-block; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: bold; margin-bottom: 10px; width: 100%; box-sizing: border-box; text-align: center;}
+        .status-badge { display: inline-block; padding: 6px 10px; border-radius: 6px; font-size: 11px; font-weight: bold; margin-bottom: 15px; width: 100%; box-sizing: border-box; text-align: center; border: 1px solid rgba(255,255,255,0.1); }
         
-        #draw-panel { display: none; background: rgba(255, 60, 60, 0.1); border: 1px solid #f44336; padding: 10px; border-radius: 8px; margin-top: 15px; text-align: center; }
+        #draw-panel { display: none; background: rgba(255, 59, 48, 0.1); border: 1px solid #ff3b30; padding: 12px; border-radius: 8px; margin-top: 15px; text-align: center; }
         #draw-panel p { margin: 0 0 10px 0; font-size: 12px; color: #ffcccc; }
 
-        .badge-status { padding: 3px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; color: white; }
+        .badge-status { padding: 4px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; color: white; display: inline-block;}
+
+        /* Styling Legenda yang Rapi */
+        .legend-section { margin-top: 15px; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; border: 1px solid #333; }
+        .legend-title { font-weight: bold; color: #ccc; font-size: 11px; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.5px; }
+        .legend-grid { display: grid; grid-template-columns: 1fr; gap: 6px; font-size: 11px; color: #ddd; }
+        .legend-box { display: inline-block; width: 14px; height: 14px; margin-right: 8px; border-radius: 3px; vertical-align: middle; }
+        .legend-line { display: inline-block; width: 14px; height: 3px; margin-right: 8px; vertical-align: middle; }
 
         @media (max-width: 600px) {
-            #ui-panel { width: 90%; left: 5%; top: 10px; max-height: 40vh; padding: 12px; box-sizing: border-box; }
-            #edit-modal { top: auto; bottom: 0; left: 0; transform: none; width: 100%; border-radius: 20px 20px 0 0; box-sizing: border-box; padding: 20px; padding-bottom: 40px; }
-            .btn-group { flex-direction: column; gap: 5px;}
+            #ui-panel { width: 90%; left: 5%; top: 10px; max-height: 45vh; padding: 15px; box-sizing: border-box; }
+            #edit-modal { top: auto; bottom: 0; left: 0; transform: none; width: 100%; border-radius: 20px 20px 0 0; box-sizing: border-box; padding: 25px; padding-bottom: 40px; }
+            .btn-group { flex-direction: column; gap: 8px;}
         }
     </style>
 </head>
@@ -58,46 +63,58 @@
     <div id="tooltip"></div>
     
     <div id="ui-panel">
-        <h3 style="margin: 0 0 5px 0; font-size: 16px;">Sistem Kadaster 3D</h3>
+        <h3 style="margin: 0 0 5px 0; font-size: 18px; color: #fff;">Sistem Kadaster 3D</h3>
         
         <div id="sync-status" class="status-badge" style="background: #ffaa00; color: #111;">Menghubungkan Server...</div>
 
         <select id="basemap-selector" class="basemap-select" onchange="changeBasemap()">
             <option value="satellite">Citra Satelit (ESRI)</option>
-            <option value="dark">Carto Dark (Gelap)</option>
-            <option value="light">Carto Light (Terang)</option>
+            <option value="dark">Peta Gelap (Dark Mode)</option>
+            <option value="light">Peta Terang</option>
         </select>
-        
-        <div id="total-bangunan" style="font-size: 13px; margin-bottom: 10px; color: #00ffaa; font-weight: bold;">Memuat data bidang...</div>
 
-        <button class="btn-blue" onclick="flyToUser()" style="margin-bottom: 5px; background: #3388ff;">📍 Fokus ke Lokasi Saya</button>
-        <button onclick="downloadUpdatedData()">💾 Download GeoJSON Final</button>
-        <button class="btn-green" onclick="toggleDrawMode()" id="btn-draw" style="margin-top: 10px;">✏️ Digitasi Bidang/Bangunan</button>
+        <button onclick="downloadUpdatedData()" style="margin-bottom: 10px;">💾 Ekspor Data ke ArcGIS</button>
+        <button class="btn-green" onclick="toggleDrawMode()" id="btn-draw">✏️ Digitasi Manual</button>
 
         <div id="draw-panel">
-            <p>Klik di peta untuk membuat titik poligon. Minimal 3 titik.</p>
+            <p>Klik di peta untuk membuat poligon bangunan baru. Minimal 3 titik.</p>
             <div style="display: flex; gap: 5px;">
                 <button class="btn-green" onclick="finishDrawing()">✅ Selesai</button>
                 <button class="btn-red" onclick="cancelDrawing()">❌ Batal</button>
             </div>
         </div>
 
-        <div class="legend" style="margin-top: 15px;">
-            <div style="margin-bottom: 8px; font-weight: bold; color:#ccc; font-size: 12px; border-top: 1px solid #444; padding-top: 10px;">Status Bidang / Bangunan:</div>
-            <div style="font-size:11px; display:grid; grid-template-columns: 1fr; gap: 6px;">
-                <div><span style="display:inline-block; width:12px; height:12px; background:rgba(150,150,150,0.8); margin-right:5px; border: 1px solid #aaa;"></span>Belum Diisi Data</div>
-                <div><span style="display:inline-block; width:12px; height:12px; background:rgba(51,204,51,0.9); margin-right:5px;"></span>Aman / Sertipikat Hak</div>
-                <div><span style="display:inline-block; width:12px; height:12px; background:rgba(255,204,0,0.9); margin-right:5px;"></span>Proses Pendaftaran (BPN)</div>
-                <div><span style="display:inline-block; width:12px; height:12px; background:rgba(255,51,51,0.9); margin-right:5px;"></span>Dalam Sengketa</div>
+        <!-- LEGENDA BATAS -->
+        <div class="legend-section">
+            <div class="legend-title">Batas & Wilayah</div>
+            <div class="legend-grid">
+                <div><span class="legend-line" style="background:#ffaa00;"></span>Batas Administrasi / Wilayah</div>
+                <div><span class="legend-line" style="background:#00ffff;"></span>Batas Bidang Tanah (Persil)</div>
+            </div>
+        </div>
+
+        <!-- LEGENDA BANGUNAN -->
+        <div class="legend-section">
+            <div class="legend-title">Fungsi Bangunan (3D)</div>
+            <div class="legend-grid" style="grid-template-columns: 1fr 1fr;">
+                <div style="grid-column: span 2; margin-bottom: 5px;">
+                    <span class="legend-box" style="background:rgba(150,150,150,0.8); border: 1px solid #aaa;"></span><span style="color:#ffcc00; font-weight:bold;">Belum Diisi Data</span>
+                </div>
+                <div><span class="legend-box" style="background:rgba(255,204,0,0.9);"></span>Permukiman</div>
+                <div><span class="legend-box" style="background:rgba(51,136,255,0.9);"></span>Komersial</div>
+                <div><span class="legend-box" style="background:rgba(255,51,51,0.9);"></span>Pendidikan</div>
+                <div><span class="legend-box" style="background:rgba(51,255,136,0.9);"></span>Puskesmas</div>
+                <div><span class="legend-box" style="background:rgba(170,51,255,0.9);"></span>Pemerintahan</div>
+                <div><span class="legend-box" style="background:rgba(100,100,100,0.9);"></span>Infrastruktur</div>
             </div>
         </div>
     </div>
 
     <div id="edit-modal">
-        <h3>Atribut Bidang & Bangunan <span id="modal-id-text" style="font-size: 10px; color:#555; display:block;"></span></h3>
+        <h3>Atribut Kadaster <span id="modal-id-text" style="font-size: 11px; color:#888; font-weight:normal; float:right; margin-top:5px;"></span></h3>
         
         <label>Nomor Induk Bidang (NIB):</label>
-        <input type="text" id="input-nib" placeholder="Contoh: 08.01.01...">
+        <input type="text" id="input-nib" placeholder="Contoh: 08.01.01.01.12345">
         
         <div style="display:flex; gap:10px;">
             <div style="flex:1;">
@@ -106,29 +123,46 @@
             </div>
             <div style="flex:1;">
                 <label>Luas Bidang (m²):</label>
-                <input type="number" id="input-luas-bidang" step="0.1" placeholder="Auto / Isi Manual">
+                <input type="number" id="input-luas-bidang" step="0.1" placeholder="Auto / Manual">
             </div>
         </div>
 
-        <label>Tipe Hak:</label>
-        <select id="input-hak">
-            <option value="">-- Belum Ada Data --</option>
-            <option value="Sertipikat Hak Milik (SHM)">Sertipikat Hak Milik (SHM)</option>
-            <option value="Hak Guna Bangunan (HGB)">Hak Guna Bangunan (HGB)</option>
-            <option value="Hak Pakai">Hak Pakai</option>
-            <option value="Girik / Letter C">Girik / Letter C</option>
+        <label>Fungsi Bangunan:</label>
+        <select id="input-fungsi">
+            <option value="Permukiman">Rumah / Permukiman</option>
+            <option value="Komersial">Toko / Komersial</option>
+            <option value="Pendidikan">Sekolah / Pendidikan</option>
+            <option value="Kesehatan">Puskesmas / Kesehatan</option>
+            <option value="Pemerintahan">Kantor Pemerintahan</option>
+            <option value="Infrastruktur">Infrastruktur Umum</option>
         </select>
 
-        <label>Status Tanah:</label>
-        <select id="input-status">
-            <option value="">-- Belum Ada Data --</option>
-            <option value="Aman">Aman / Bersih</option>
-            <option value="Proses BPN">Sedang Proses BPN</option>
-            <option value="Sengketa">Dalam Sengketa</option>
-        </select>
+        <div style="display:flex; gap:10px;">
+            <div style="flex:1;">
+                <label>Tipe Hak:</label>
+                <select id="input-hak">
+                    <option value="">-- Pilih --</option>
+                    <option value="SHM">SHM</option>
+                    <option value="HGB">HGB</option>
+                    <option value="Hak Pakai">Hak Pakai</option>
+                    <option value="Girik">Girik</option>
+                </select>
+            </div>
+            <div style="flex:1;">
+                <label>Status Tanah:</label>
+                <select id="input-status">
+                    <option value="">-- Pilih --</option>
+                    <option value="Aman">Aman</option>
+                    <option value="Proses BPN">Proses BPN</option>
+                    <option value="Sengketa">Sengketa</option>
+                </select>
+            </div>
+        </div>
 
-        <input type="hidden" id="input-tinggi"> <div class="btn-group">
-            <button class="btn-blue" onclick="saveBuildingData()">💾 Simpan ke Server</button>
+        <input type="hidden" id="input-tinggi"> 
+
+        <div class="btn-group">
+            <button class="btn-blue" onclick="saveBuildingData()">💾 Simpan & Sinkronisasi</button>
             <button class="btn-red" onclick="closeEditModal()">Batal</button>
         </div>
     </div>
@@ -148,25 +182,23 @@
         firebase.database().ref('.info/connected').on('value', function(snap) {
             const syncStatus = document.getElementById('sync-status');
             if (snap.val() === true) {
-                syncStatus.innerText = "🟢 Tersambung (Realtime)";
-                syncStatus.style.background = "#4CAF50"; syncStatus.style.color = "white";
+                syncStatus.innerText = "🟢 Database Sinkron (Online)";
+                syncStatus.style.background = "rgba(52, 199, 89, 0.2)"; syncStatus.style.color = "#34c759"; syncStatus.style.borderColor = "#34c759";
             } else {
-                syncStatus.innerText = "🔴 Offline / Terputus";
-                syncStatus.style.background = "#f44336"; syncStatus.style.color = "white";
+                syncStatus.innerText = "🔴 Koneksi Terputus";
+                syncStatus.style.background = "rgba(255, 59, 48, 0.2)"; syncStatus.style.color = "#ff3b30"; syncStatus.style.borderColor = "#ff3b30";
             }
         });
 
         // VARIABEL GLOBAL
         let updateCounter = 0;
         let buildingData = { type: "FeatureCollection", features: [] };        
-        let bidangData = null; // Menyimpan layer bidang_tanah.geojson
+        let bidangData = null; // Layer persil tanah
+        let batasData = null; // Layer batas kecamatan/area
         let selectedFeature = null;
 
-        // VARIABEL GPS & DIGITASI
-        let userLocation = null;
         let isDrawing = false;
         let drawPoints = [];
-        let isFirstLocationFixed = false;
 
         // BASEMAPS
         const BASEMAPS = {
@@ -178,7 +210,7 @@
         const deckgl = new deck.DeckGL({
             container: 'map',
             mapStyle: BASEMAPS.satellite,
-            initialViewState: { longitude: 105.3055, latitude: -5.3625, zoom: 16, pitch: 45, bearing: 0 },
+            initialViewState: { longitude: 105.3055, latitude: -5.3625, zoom: 16, pitch: 50, bearing: 0 },
             controller: true,
             layers: [],
             getCursor: () => isDrawing ? 'crosshair' : 'grab',
@@ -187,49 +219,39 @@
 
         function changeBasemap() { deckgl.setProps({ mapStyle: BASEMAPS[document.getElementById('basemap-selector').value] }); }
 
-        // FUNGSI PEWARNAAN BERDASARKAN KELENGKAPAN & STATUS DATA
-        function getBuildingStatusColor(p, isNew) {
+        // FUNGSI PEWARNAAN BANGUNAN BERDASARKAN FUNGSI & KELENGKAPAN
+        function getBuildingColor(p, isNew) {
             if (isNew) return [255, 100, 100, 255]; 
             
-            // Cek apakah data NIB / Tipe Hak sudah diisi
+            // Cek kelengkapan (Jika NIB atau Tipe Hak kosong, dianggap belum didata)
             const isDataComplete = (p.NIB && p.NIB.trim() !== '') || (p.tipe_hak && p.tipe_hak !== '');
-            
-            // Jika belum diisi data atributnya (Warna Abu-abu transparan)
             if (!isDataComplete) {
-                return [150, 150, 150, 180];
+                return [150, 150, 150, 180]; // Abu-abu pudar
             }
 
-            // Jika sudah diisi, warnai berdasarkan Status
-            const status = p.status ? p.status.toLowerCase() : '';
-            if (status.includes('sengketa')) return [255, 51, 51, 230]; // Merah
-            if (status.includes('proses')) return [255, 204, 0, 230]; // Kuning
+            // Jika sudah diisi, warnai berdasarkan FUNGSI BANGUNAN
+            const f = p.fungsi ? p.fungsi.toLowerCase() : '';
+            if (f.includes('pendidikan') || f.includes('sekolah')) return [255, 51, 51, 230]; // Merah
+            if (f.includes('komersial')) return [51, 136, 255, 230]; // Biru
+            if (f.includes('kesehatan') || f.includes('puskesmas')) return [51, 255, 136, 230]; // Hijau
+            if (f.includes('pemerintahan')) return [170, 51, 255, 230]; // Ungu
+            if (f.includes('infrastruktur')) return [100, 100, 100, 230]; // Abu-abu gelap
             
-            return [51, 204, 51, 230]; // Hijau (Aman / SHM)
-        }
-
-        if ("geolocation" in navigator) {
-            navigator.geolocation.watchPosition((position) => {
-                userLocation = [position.coords.longitude, position.coords.latitude];
-                updateMap();
-                if (!isFirstLocationFixed) { flyToUser(); isFirstLocationFixed = true; }
-            }, (error) => { console.log("GPS Tertutup / Error"); }, { enableHighAccuracy: true });
-        }
-
-        function flyToUser() {
-            if (userLocation) {
-                deckgl.setProps({ initialViewState: { longitude: userLocation[0], latitude: userLocation[1], zoom: 19, pitch: 45, bearing: 0, transitionDuration: 1000 } });
-            }
+            return [255, 204, 0, 230]; // Kuning (Permukiman / Default)
         }
 
         async function loadData() {
             try {
-                // LOAD DATA BIDANG TANAH (Ganti URL ini jika lokasinya berbeda)
+                // LOAD BATAS WILAYAH
+                try {
+                    const batasRes = await fetch('./batas_kecamatan.geojson');
+                    if (batasRes.ok) batasData = await batasRes.json();
+                } catch(e) { console.log("Batas kecamatan tidak dimuat."); }
+
+                // LOAD BIDANG TANAH
                 try {
                     const bidangRes = await fetch('./bidang_tanah.geojson');
-                    if (bidangRes.ok) {
-                        bidangData = await bidangRes.json();
-                        document.getElementById('total-bangunan').innerText = `Total Bidang Tanah: ${bidangData.features.length}`;
-                    }
+                    if (bidangRes.ok) bidangData = await bidangRes.json();
                 } catch(e) { console.log("File bidang_tanah.geojson tidak ditemukan."); }
 
                 // LOAD BANGUNAN LAMA
@@ -242,7 +264,7 @@
                     }
                 } catch(e) { console.log("Bangunan eksisting tidak dimuat."); }
 
-                // LISTEN FIREBASE
+                // LISTEN FIREBASE (Sinkronisasi Edit)
                 db.ref('edits_bandar_lampung').on('value', (snapshot) => {
                     const cloudData = snapshot.val();
                     if (cloudData) {
@@ -253,6 +275,7 @@
                     }
                 });
 
+                // LISTEN FIREBASE (Sinkronisasi Digitasi Baru)
                 db.ref('new_buildings_bandar_lampung').on('value', (snapshot) => {
                     const newBldgs = snapshot.val();
                     if (newBldgs) {
@@ -280,43 +303,54 @@
         function updateMap() {
             const layers = [];
 
-            // LAYER BIDANG TANAH (Poligon Dasar)
-            if (bidangData) {
+            // LAYER BATAS WILAYAH (Poligon Luar)
+            if (batasData) {
                 layers.push(new deck.GeoJsonLayer({
-                    id: 'layer-bidang-tanah', 
-                    data: bidangData,
-                    filled: true, getFillColor: [0, 200, 255, 0], // Transparan agar bangunan terlihat
-                    stroked: true, getLineColor: [0, 255, 255, 200], lineWidthMinPixels: 2, 
+                    id: 'layer-batas-wilayah', 
+                    data: batasData,
+                    filled: true, getFillColor: [255, 170, 0, 10], // Sangat transparan
+                    stroked: true, getLineColor: [255, 170, 0, 255], lineWidthMinPixels: 3, 
                     pickable: false 
                 }));
             }
 
-            // LAYER BANGUNAN / OBJEK 3D
+            // LAYER BIDANG TANAH (Persil)
+            if (bidangData) {
+                layers.push(new deck.GeoJsonLayer({
+                    id: 'layer-bidang-tanah', 
+                    data: bidangData,
+                    filled: true, getFillColor: [0, 255, 255, 0], // Transparan
+                    stroked: true, getLineColor: [0, 255, 255, 200], lineWidthMinPixels: 1.5, 
+                    pickable: false 
+                }));
+            }
+
+            // LAYER BANGUNAN 3D
             if (buildingData.features.length > 0) {
                 layers.push(new deck.GeoJsonLayer({
                     id: 'bangunan-3d', 
                     data: buildingData, 
                     filled: true, extruded: true, wireframe: true, opacity: 0.95,
                     getElevation: d => parseFloat(d.properties.height_m) || 3.5, 
-                    getFillColor: d => getBuildingStatusColor(d.properties, d.properties.isNew), 
-                    getLineColor: [255, 255, 255, 80], 
-                    autoHighlight: true, highlightColor: [255, 255, 255, 150], pickable: !isDrawing,
+                    getFillColor: d => getBuildingColor(d.properties, d.properties.isNew), 
+                    getLineColor: [255, 255, 255, 60], 
+                    autoHighlight: true, highlightColor: [255, 255, 255, 120], pickable: !isDrawing,
                     updateTriggers: { getElevation: updateCounter, getFillColor: updateCounter },
                     onHover: info => {
                         const tooltip = document.getElementById('tooltip');
                         if (info.object && !isDrawing) {
                             const p = info.object.properties;
-                            
                             const isDataComplete = (p.NIB && p.NIB.trim() !== '') || (p.tipe_hak && p.tipe_hak !== '');
                             const badgeStatus = isDataComplete 
-                                ? `<span class="badge-status" style="background:#4CAF50;">✅ Data Terisi</span>`
-                                : `<span class="badge-status" style="background:#f44336;">⚠️ Belum Diisi</span>`;
+                                ? `<span class="badge-status" style="background:#34c759;">✅ Terdokumentasi</span>`
+                                : `<span class="badge-status" style="background:#ff3b30;">⚠️ Belum Diisi</span>`;
 
                             tooltip.style.display = 'block';
                             tooltip.style.left = info.x + 15 + 'px'; tooltip.style.top = info.y + 15 + 'px';
                             tooltip.style.innerHTML = `
-                                <div style="margin-bottom: 5px;">${badgeStatus}</div>
+                                <div style="margin-bottom: 8px;">${badgeStatus}</div>
                                 <b>NIB:</b> ${p.NIB || 'Kosong'}<br/>
+                                <b>Fungsi:</b> ${p.fungsi || 'Permukiman'}<br/>
                                 <b>Hak:</b> ${p.tipe_hak || '-'}<br/>
                                 <b>Status:</b> ${p.status || '-'}<br/>
                                 <b>L. Bidang:</b> ${p.luas_bidang || '?'} m²<br/>
@@ -327,13 +361,10 @@
                 }));
             }
 
-            // LAYER DIGITASI & GPS
+            // LAYER DIGITASI MANUAL
             if (isDrawing && drawPoints.length > 0) {
-                layers.push(new deck.ScatterplotLayer({ id: 'draw-points', data: drawPoints.map(p => ({position: p})), getPosition: d => d.position, getFillColor: [255, 50, 50], getRadius: 2, radiusUnits: 'meters' }));
-                if (drawPoints.length > 1) { layers.push(new deck.PathLayer({ id: 'draw-lines', data: [{path: drawPoints}], getPath: d => d.path, getColor: [255, 50, 50, 200], getWidth: 2, widthUnits: 'pixels' })); }
-            }
-            if (userLocation) {
-                layers.push(new deck.ScatterplotLayer({ id: 'lokasi-user', data: [{ position: userLocation }], getPosition: d => d.position, getFillColor: [0, 150, 255, 255], getRadius: 10, radiusUnits: 'meters', stroked: true, getLineColor: [255, 255, 255, 255], lineWidthMinPixels: 3, updateTriggers: { getPosition: userLocation } }));
+                layers.push(new deck.ScatterplotLayer({ id: 'draw-points', data: drawPoints.map(p => ({position: p})), getPosition: d => d.position, getFillColor: [52, 199, 89], getRadius: 2, radiusUnits: 'meters' }));
+                if (drawPoints.length > 1) { layers.push(new deck.PathLayer({ id: 'draw-lines', data: [{path: drawPoints}], getPath: d => d.path, getColor: [52, 199, 89, 200], getWidth: 2, widthUnits: 'pixels' })); }
             }
 
             deckgl.setProps({ layers: layers });
@@ -359,7 +390,7 @@
             const newFeature = turf.polygon([polyCoords], {
                 _id: 'bgn_baru_' + Date.now(),
                 isNew: true, 
-                NIB: '', height_m: 4, luas_bangunan: 0, luas_bidang: 0, tipe_hak: '', status: ''
+                NIB: '', height_m: 4, luas_bangunan: 0, luas_bidang: 0, tipe_hak: '', status: '', fungsi: 'Permukiman'
             });
             cancelDrawing(); 
             openEditModal(newFeature); 
@@ -369,18 +400,15 @@
             selectedFeature = feature;
             const p = feature.properties;
             
-            // Hitung otomatis Luas Bangunan dari geometri
             let calcLuasBgn = 0;
             try { calcLuasBgn = turf.area(feature).toFixed(2); } catch (e) {}
 
-            // Coba hitung otomatis Luas Bidang jika bangunan berpotongan dengan file bidang_tanah
             let calcLuasBidang = "";
             if (bidangData && !p.luas_bidang) {
                 try {
                     const centerPt = turf.centroid(feature);
                     for (let i = 0; i < bidangData.features.length; i++) {
                         if (turf.booleanPointInPolygon(centerPt, bidangData.features[i])) {
-                            // Ambil luas dari properti bidang jika ada, atau hitung dengan Turf
                             const bProps = bidangData.features[i].properties;
                             calcLuasBidang = bProps.Luas || bProps.LUAS || turf.area(bidangData.features[i]).toFixed(2);
                             break;
@@ -393,12 +421,21 @@
             document.getElementById('input-nib').value = p.NIB || '';
             document.getElementById('input-tinggi').value = p.height_m || (p.isNew ? 4 : '');
             
-            // Masukkan luas bangunan & bidang (prioritaskan data lama, jika kosong pakai auto-kalkulasi)
             document.getElementById('input-luas').value = p.luas_bangunan || calcLuasBgn;
             document.getElementById('input-luas-bidang').value = p.luas_bidang || calcLuasBidang;
             
-            document.getElementById('input-hak').value = p.tipe_hak || '';
-            document.getElementById('input-status').value = p.status || '';
+            // Set dropdown values safely
+            const setDropdown = (id, value, fallback) => {
+                const el = document.getElementById(id);
+                if (value) {
+                    let found = Array.from(el.options).some(opt => opt.value === value);
+                    el.value = found ? value : fallback;
+                } else { el.value = fallback; }
+            }
+            
+            setDropdown('input-fungsi', p.fungsi, 'Permukiman');
+            setDropdown('input-hak', p.tipe_hak, '');
+            setDropdown('input-status', p.status, '');
 
             document.getElementById('edit-modal').style.display = 'block';
         }
@@ -410,11 +447,13 @@
             const id = selectedFeature.properties._id;
             const isNew = selectedFeature.properties.isNew;
             
+            // ATRIBUT LENGKAP UNTUK ARCGIS
             const updatedProps = {
                 NIB: document.getElementById('input-nib').value,
                 height_m: parseFloat(document.getElementById('input-tinggi').value) || 0,
                 luas_bangunan: parseFloat(document.getElementById('input-luas').value) || 0,
                 luas_bidang: parseFloat(document.getElementById('input-luas-bidang').value) || 0,
+                fungsi: document.getElementById('input-fungsi').value,
                 tipe_hak: document.getElementById('input-hak').value,
                 status: document.getElementById('input-status').value
             };
@@ -432,11 +471,20 @@
         function downloadUpdatedData() {
             if (!buildingData || buildingData.features.length === 0) return alert("Data kosong!");
             const cleanData = JSON.parse(JSON.stringify(buildingData));
-            cleanData.features.forEach(bgn => { delete bgn.properties._id; delete bgn.properties.isNew; });
+            
+            // Hapus ID internal Firebase agar tabel ArcGIS bersih, tapi simpan atribut penting
+            cleanData.features.forEach(bgn => { 
+                delete bgn.properties._id; 
+                delete bgn.properties.isNew; 
+            });
+            
             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(cleanData));
             const a = document.createElement('a');
-            a.href = dataStr; a.download = "hasil_kadaster_pro_final.geojson";
-            document.body.appendChild(a); a.click(); a.remove();
+            a.href = dataStr; 
+            a.download = "data_kadaster_arcgis_final.geojson";
+            document.body.appendChild(a); 
+            a.click(); 
+            a.remove();
         }
     </script>
 </body>
