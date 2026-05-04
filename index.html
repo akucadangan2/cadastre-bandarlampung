@@ -25,24 +25,24 @@
         .stat-row { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 13px; }
         .stat-row:last-child { margin-bottom: 0; }
         
-        /* Modal Edit Bangunan */
-        #edit-modal { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #1a1a1a; color: white; padding: 25px; border-radius: 12px; z-index: 100; border: 1px solid #444; width: 340px; box-shadow: 0 15px 50px rgba(0,0,0,0.9); }
-        #edit-modal h3 { margin-top: 0; color: #00c8ff; border-bottom: 1px solid #333; padding-bottom: 12px; font-size: 18px; }
-        #edit-modal label { display: block; margin: 12px 0 6px; font-size: 13px; color: #bbb;}
-        #edit-modal input, #edit-modal select { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #444; background: #0d0d0d; color: white; box-sizing: border-box; font-size: 14px;}
-        #edit-modal input:focus, #edit-modal select:focus { outline: none; border-color: #00c8ff; }
+        /* Modal Style Umum */
+        .modal { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #1a1a1a; color: white; padding: 25px; border-radius: 12px; z-index: 100; border: 1px solid #444; width: 340px; box-shadow: 0 15px 50px rgba(0,0,0,0.9); }
+        .modal h3 { margin-top: 0; color: #00c8ff; border-bottom: 1px solid #333; padding-bottom: 12px; font-size: 18px; }
+        .modal label { display: block; margin: 12px 0 6px; font-size: 13px; color: #bbb;}
+        .modal input, .modal select { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #444; background: #0d0d0d; color: white; box-sizing: border-box; font-size: 14px;}
+        .modal input:focus, .modal select:focus { outline: none; border-color: #00c8ff; }
         
+        /* Modal Edit Khusus Bidang */
+        #edit-bidang-modal { border-color: #00ffff; }
+        #edit-bidang-modal h3 { color: #00ffff; }
+
         /* Modal Info Bidang (Read-only) */
         #bidang-info-modal { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #1a1a1a; color: white; padding: 25px; border-radius: 12px; z-index: 100; border: 1px solid #00ffff; width: 320px; box-shadow: 0 15px 50px rgba(0,0,0,0.9); max-height: 70vh; display: flex; flex-direction: column; }
         #bidang-info-modal h3 { margin-top: 0; color: #00ffff; border-bottom: 1px solid #333; padding-bottom: 12px; font-size: 18px; flex-shrink: 0;}
-        #bidang-attributes { font-size: 13px; line-height: 1.8; color: #ccc; overflow-y: auto; flex-grow: 1; padding-right: 5px; }
+        #bidang-attributes { font-size: 13px; line-height: 1.8; color: #ccc; overflow-y: auto; flex-grow: 1; padding-right: 5px; margin-bottom: 15px;}
         .attr-row { border-bottom: 1px dashed #333; padding: 4px 0; display: flex; justify-content: space-between; }
         .attr-key { color: #888; font-weight: 500; }
         .attr-val { color: #fff; font-weight: bold; text-align: right; word-break: break-all; max-width: 60%; }
-
-        /* Modal Edit Bidang Tanah (Bordernya disesuaikan) */
-        #edit-bidang-modal { border-color: #00ffff; }
-        #edit-bidang-modal h3 { color: #00ffff; }
 
         /* Tooltip & Utilities */
         #tooltip { position: absolute; z-index: 1; pointer-events: none; background: rgba(0, 0, 0, 0.85); color: white; padding: 12px; border-radius: 8px; font-size: 13px; display: none; border: 1px solid #444; box-shadow: 0 4px 15px rgba(0,0,0,0.5); backdrop-filter: blur(4px); }
@@ -71,7 +71,7 @@
 
         @media (max-width: 600px) {
             #ui-panel { width: 90%; left: 5%; top: 10px; max-height: 45vh; padding: 15px; box-sizing: border-box; }
-            #edit-modal, #bidang-info-modal, #edit-bidang-modal { top: auto; bottom: 0; left: 0; transform: none; width: 100%; border-radius: 20px 20px 0 0; box-sizing: border-box; padding: 25px; padding-bottom: 40px; }
+            .modal, #bidang-info-modal { top: auto; bottom: 0; left: 0; transform: none; width: 100%; border-radius: 20px 20px 0 0; box-sizing: border-box; padding: 25px; padding-bottom: 40px; }
             .btn-group { flex-direction: column; gap: 8px;}
         }
     </style>
@@ -141,7 +141,7 @@
     </div>
 
     <!-- MODAL EDIT BANGUNAN -->
-    <div id="edit-modal">
+    <div id="edit-modal" class="modal">
         <h3>Atribut Bangunan <span id="modal-id-text" style="font-size: 11px; color:#888; font-weight:normal; float:right; margin-top:5px;"></span></h3>
         
         <label>Nomor Induk Bidang (NIB):</label>
@@ -200,7 +200,7 @@
 
     <!-- MODAL INFO BIDANG (Tampil saat diklik) -->
     <div id="bidang-info-modal">
-        <h3>Informasi Bidang Tanah</h3>
+        <h3>Informasi Bidang Tanah <span id="bidang-id-title" style="font-size: 10px; color:#888; float:right; margin-top:5px;"></span></h3>
         <div id="bidang-attributes">
             <!-- Isi tabel atribut akan diinjeksi lewat JavaScript -->
         </div>
@@ -211,14 +211,14 @@
     </div>
 
     <!-- MODAL EDIT BIDANG (Khusus untuk Bidang Tanah) -->
-    <div id="edit-bidang-modal" style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #1a1a1a; color: white; padding: 25px; border-radius: 12px; z-index: 100; border: 1px solid #00ffff; width: 340px; box-shadow: 0 15px 50px rgba(0,0,0,0.9);">
-        <h3 style="margin-top: 0; color: #00ffff; border-bottom: 1px solid #333; padding-bottom: 12px; font-size: 18px;">Atribut Bidang Tanah <span id="edit-bidang-id-text" style="font-size: 11px; color:#888; font-weight:normal; float:right; margin-top:5px;"></span></h3>
+    <div id="edit-bidang-modal" class="modal">
+        <h3>Atribut Bidang Tanah <span id="edit-bidang-id-text" style="font-size: 11px; color:#888; font-weight:normal; float:right; margin-top:5px;"></span></h3>
         
-        <label style="display: block; margin: 12px 0 6px; font-size: 13px; color: #bbb;">Nomor Induk Bidang (NIB):</label>
-        <input type="text" id="input-bdg-nib" placeholder="Contoh: 08.01.01.01.12345" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #444; background: #0d0d0d; color: white; box-sizing: border-box; font-size: 14px;">
+        <label>Nomor Induk Bidang (NIB):</label>
+        <input type="text" id="input-bdg-nib" placeholder="Contoh: 08.01.01.01.12345">
         
-        <label style="display: block; margin: 12px 0 6px; font-size: 13px; color: #bbb;">Tipe Hak:</label>
-        <select id="input-bdg-hak" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #444; background: #0d0d0d; color: white; box-sizing: border-box; font-size: 14px;">
+        <label>Tipe Hak:</label>
+        <select id="input-bdg-hak">
             <option value="">-- Pilih Hak --</option>
             <option value="SHM">Sertipikat Hak Milik (SHM)</option>
             <option value="HGB">Hak Guna Bangunan (HGB)</option>
@@ -227,8 +227,8 @@
             <option value="Tanah Negara">Tanah Negara</option>
         </select>
 
-        <label style="display: block; margin: 12px 0 6px; font-size: 13px; color: #bbb;">Luas Bidang (m²):</label>
-        <input type="number" id="input-bdg-luas" step="0.1" placeholder="Dihitung Otomatis" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #444; background: #0d0d0d; color: white; box-sizing: border-box; font-size: 14px;">
+        <label>Luas Bidang (m²):</label>
+        <input type="number" id="input-bdg-luas" step="0.1" placeholder="Dihitung Otomatis">
 
         <div class="btn-group">
             <button class="btn-blue" onclick="saveBidangData()">💾 Simpan Bidang</button>
@@ -292,7 +292,6 @@
 
         function getBuildingColor(p, isNew) {
             if (isNew) return [255, 100, 100, 255]; 
-            // CEK PASTI APAKAH SUDAH DIEDIT (Mencegah bug grey-out jika form tidak diisi penuh)
             const isDataComplete = p._is_edited || (p.NIB && p.NIB.trim() !== '') || (p.tipe_hak && p.tipe_hak !== '');
             if (!isDataComplete) return [150, 150, 150, 180]; 
 
@@ -326,23 +325,22 @@
                     if (batasRes.ok) batasData = await batasRes.json();
                 } catch(e) { console.log("Batas kecamatan tidak dimuat."); }
 
-                // 2. LOAD BIDANG TANAH - (BUG FIX 1: Assign ID sebelum apapun agar tidak bergeser saat refresh)
+                // 2. LOAD BIDANG TANAH
                 try {
                     const bidangRes = await fetch('./bidang_tanah.geojson');
                     if (bidangRes.ok) {
                         const bRaw = await bidangRes.json();
+                        // KEMBALI KE LOGIKA ORIGINAL: Beri ID setelah fetch, sebelum filter apapun
                         bRaw.features.forEach((f, idx) => { f.properties._id_bidang = `bdg_${idx}`; });
                         bidangData.features = bRaw.features;
                     }
                 } catch(e) { console.log("File bidang_tanah.geojson tidak ditemukan."); }
 
-                // 3. LOAD BANGUNAN - (BUG FIX 1: Assign ID sebelum filter spasial)
+                // 3. LOAD BANGUNAN
                 try {
                     const bangunanRes = await fetch('./export_lod1_dengan_tinggi.geojson');
                     if (bangunanRes.ok) {
                         const bgnRaw = await bangunanRes.json();
-                        // ASSIGN ID DISINI AGAR STABIL!!!
-                        bgnRaw.features.forEach((bgn, idx) => { bgn.properties._id = `bgn_lama_${idx}`; });
                         
                         let bangunanDiDalam = [];
                         if (batasData && batasData.features && batasData.features.length > 0) {
@@ -362,20 +360,24 @@
                         } else {
                             bangunanDiDalam = bgnRaw.features;
                         }
+
+                        // KEMBALI KE LOGIKA ORIGINAL: Beri ID SETELAH difilter.
+                        // INI YANG MEMBUAT DATAMU SEBELUMNYA COCOK!
+                        bangunanDiDalam.forEach((bgn, idx) => { bgn.properties._id = `bgn_lama_${idx}`; });
                         buildingData.features = bangunanDiDalam;
                     }
                 } catch(e) { console.log("Bangunan eksisting tidak dimuat."); }
                 
                 updateStatistics();
 
-                // 4. LISTEN FIREBASE UNTUK BANGUNAN (BUG FIX 2: REAL-TIME DECK.GL REACTIVITY)
+                // 4. LISTEN FIREBASE UNTUK BANGUNAN
                 db.ref('edits_bandar_lampung').on('value', (snapshot) => {
                     const cloudData = snapshot.val();
                     if (cloudData && buildingData.features.length > 0) {
                         buildingData.features.forEach(bgn => {
                             if (cloudData[bgn.properties._id]) { Object.assign(bgn.properties, cloudData[bgn.properties._id]); }
                         });
-                        // Paksa array baru agar Deck.GL ter-trigger saat user di HP/Laptop lain menyimpan
+                        // REALTIME FIX: Buat array baru agar Deck.GL ter-trigger tanpa refresh
                         buildingData = { ...buildingData, features: [...buildingData.features] };
                         updateCounter++; updateMap(); 
                     }
@@ -391,7 +393,7 @@
                     }
                 });
 
-                // 5. LISTEN FIREBASE UNTUK BIDANG TANAH (BUG FIX 2)
+                // 5. LISTEN FIREBASE UNTUK BIDANG TANAH
                 db.ref('edits_bidang_tanah_bandar_lampung').on('value', (snapshot) => {
                     const cloudBidangData = snapshot.val();
                     if (cloudBidangData && bidangData.features.length > 0) {
@@ -400,7 +402,7 @@
                                 Object.assign(bdg.properties, cloudBidangData[bdg.properties._id_bidang]);
                             }
                         });
-                        // Paksa array baru agar realtime langsung muncul tanpa refresh
+                        // REALTIME FIX: Buat array baru agar Deck.GL ter-trigger tanpa refresh
                         bidangData = { ...bidangData, features: [...bidangData.features] };
                         updateCounter++; updateMap();
                     }
@@ -412,7 +414,6 @@
 
         loadData();
 
-        // LOGIKA KLIK PEMISAHAN BANGUNAN & BIDANG
         function handleMapClick(info) {
             if (isDrawing && info.coordinate) {
                 drawPoints.push(info.coordinate);
@@ -431,13 +432,14 @@
             }
         }
 
-        // ========================== MODAL INFO BIDANG ==========================
         function openBidangInfo(feature) {
             closeModals();
             selectedBidangFeature = feature;
             const p = feature.properties;
             const container = document.getElementById('bidang-attributes');
             container.innerHTML = ''; 
+
+            document.getElementById('bidang-id-title').innerText = `ID: ${p._id_bidang}`;
 
             let luasBidang = p.luas_bidang || p.Luas || p.LUAS || p.luas;
             if (!luasBidang) {
@@ -465,7 +467,6 @@
             document.getElementById('bidang-info-modal').style.display = 'flex';
         }
 
-        // ========================== FORM EDIT BIDANG ==========================
         function openEditBidangModal() {
             document.getElementById('bidang-info-modal').style.display = 'none';
             const p = selectedBidangFeature.properties;
@@ -492,7 +493,7 @@
                 NIB: document.getElementById('input-bdg-nib').value,
                 tipe_hak: document.getElementById('input-bdg-hak').value,
                 luas_bidang: parseFloat(document.getElementById('input-bdg-luas').value) || 0,
-                _is_edited: true // Flag aman agar map berubah warna
+                _is_edited: true // Flag untuk merubah warna otomatis
             };
 
             db.ref('edits_bidang_tanah_bandar_lampung/' + id).update(updatedProps)
@@ -500,7 +501,6 @@
               .catch(e => alert("Gagal Simpan Data Bidang!"));
         }
 
-        // ========================== FORM EDIT BANGUNAN ==========================
         function openEditModal(feature) {
             closeModals();
             selectedFeature = feature;
@@ -557,7 +557,7 @@
                 fungsi: document.getElementById('input-fungsi').value,
                 tipe_hak: document.getElementById('input-hak').value,
                 status: document.getElementById('input-status').value,
-                _is_edited: true // Flag aman
+                _is_edited: true // Flag untuk merubah warna otomatis
             };
 
             if (isNew) {
@@ -666,13 +666,13 @@
             if (!buildingData || buildingData.features.length === 0) return alert("Data kosong!");
             const triggerDownload = (dataObj, filename) => {
                 const cleanData = JSON.parse(JSON.stringify(dataObj));
-                cleanData.features.forEach(f => { delete f.properties._id; delete f.properties._id_bidang; delete f.properties.isNew; });
+                cleanData.features.forEach(f => { delete f.properties._id; delete f.properties._id_bidang; delete f.properties.isNew; delete f.properties._is_edited; });
                 const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(cleanData));
                 const a = document.createElement('a'); a.href = dataStr; a.download = filename;
                 document.body.appendChild(a); a.click(); a.remove();
             };
-            if (buildingData.features.length > 0) triggerDownload(buildingData, "1_Bangunan_3D.geojson");
-            setTimeout(() => { if (bidangData.features.length > 0) triggerDownload(bidangData, "2_Bidang_Tanah.geojson"); }, 1000);
+            if (buildingData.features.length > 0) triggerDownload(buildingData, "1_Bangunan_3D_Update.geojson");
+            setTimeout(() => { if (bidangData.features.length > 0) triggerDownload(bidangData, "2_Bidang_Tanah_Update.geojson"); }, 1000);
         }
     </script>
 </body>
