@@ -18,6 +18,7 @@
         #map { width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; }
         
         #ui-panel { position: absolute; top: 20px; left: 20px; z-index: 10; background: rgba(20, 20, 20, 0.95); padding: 18px; border-radius: 12px; border: 1px solid #333; color: white; backdrop-filter: blur(12px); width: 300px; box-shadow: 0 8px 32px rgba(0,0,0,0.6); max-height: 90vh; overflow-y: auto; }
+        
         #stats-panel { background: rgba(0,0,0,0.4); padding: 12px; border-radius: 8px; border: 1px solid #444; margin-bottom: 15px; }
         .stat-row { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 13px; }
         .stat-row:last-child { margin-bottom: 0; }
@@ -302,7 +303,6 @@
 
         async function loadData() {
             try {
-                // 1. LOAD DATA LOKAL / GITHUB
                 const [btsRes, bdgRes, bgnRes] = await Promise.allSettled([
                     fetch('./batas_kecamatan.geojson'),
                     fetch('./bidang_tanah.geojson'),
@@ -311,34 +311,32 @@
 
                 if (btsRes.status === 'fulfilled' && btsRes.value.ok) batasData = await btsRes.value.json();
 
-                // 2. PROSES DATA BIDANG TANAH DENGAN ID YANG KONSISTEN
+                // 1. DATA BIDANG TANAH
                 if (bdgRes.status === 'fulfilled' && bdgRes.value.ok) {
                     const bRaw = await bdgRes.value.json();
-                    // PENETAPAN ID: Kita gunakan ID 'bdg_0', 'bdg_1', dst sesuai index array awal.
                     bRaw.features.forEach((f, idx) => { 
                         f.properties._id_bidang = f.properties._id_bidang || `bdg_${idx}`; 
                     });
                     bidangData = bRaw;
                 }
 
-                // 3. PROSES DATA BANGUNAN DENGAN ID YANG KONSISTEN
+                // 2. DATA BANGUNAN EKSISTING (PERBAIKAN ID SANGAT PENTING DISINI)
                 if (bgnRes.status === 'fulfilled' && bgnRes.value.ok) {
                     const bgnRaw = await bgnRes.value.json();
                     
-                    // PENETAPAN ID SEBELUM FILTERING agar ID tidak bergeser saat difilter
+                    // KEMBALIKAN KE FORMAT ID FIREBASE ASLI! (bgn_sumurbandung_X)
                     bgnRaw.features.forEach((bgn, idx) => { 
-                        bgn.properties._id = bgn.properties._id || `bgn_lama_${idx}`; 
+                        bgn.properties._id = bgn.properties._id || `bgn_sumurbandung_${idx}`; 
                     });
                     
-                    // Filter Bangunan berdasarkan Poligon Batas (Jika ada)
+                    // Filter Bangunan berdasarkan Poligon Batas yang lebih toleran (memakai booleanIntersects)
                     if (batasData && batasData.features && batasData.features.length > 0) {
                         const poligonBatas = batasData.features[0]; 
                         buildingData.features = bgnRaw.features.filter(bgn => {
                             if (!bgn.geometry) return false;
                             try {
-                                const pt = turf.centroid(bgn);
-                                return turf.booleanPointInPolygon(pt, poligonBatas);
-                            } catch (e) { return false; }
+                                return turf.booleanIntersects(bgn, poligonBatas);
+                            } catch (e) { return true; } // Jika error hitung, biarkan lolos agar data tidak hilang
                         });
                     } else {
                         buildingData.features = bgnRaw.features;
@@ -347,28 +345,24 @@
                 
                 updateStatistics();
 
-                // 4. SINKRONISASI FIREBASE - BANGUNAN
+                // 3. SINKRONISASI FIREBASE - BANGUNAN
                 db.ref('edits_bandar_lampung').on('value', (snapshot) => {
                     const cloudData = snapshot.val();
                     if (cloudData) {
                         buildingData.features.forEach(bgn => {
                             const id = bgn.properties._id;
-                            // Inject data firebase ke properti bangunan jika ID cocok
                             if (cloudData[id]) { Object.assign(bgn.properties, cloudData[id]); }
                         });
-                        // Trigger render ulang map
                         buildingData = { ...buildingData, features: [...buildingData.features] };
                         updateCounter++; updateMap(); 
                     }
                 });
 
-                // 5. SINKRONISASI FIREBASE - BANGUNAN BARU (DIGITASI)
+                // 4. SINKRONISASI FIREBASE - BANGUNAN BARU (DIGITASI)
                 db.ref('new_buildings_bandar_lampung').on('value', (snapshot) => {
                     const newBldgs = snapshot.val();
                     if (newBldgs) {
-                        // Buang bangunan baru yang lama agar tidak duplikat
                         buildingData.features = buildingData.features.filter(f => !f.properties.isNew);
-                        // Masukkan kembali semua bangunan baru dari Firebase
                         Object.keys(newBldgs).forEach(key => {
                             buildingData.features.push(newBldgs[key]);
                         });
@@ -377,16 +371,14 @@
                     }
                 });
 
-                // 6. SINKRONISASI FIREBASE - BIDANG TANAH
+                // 5. SINKRONISASI FIREBASE - BIDANG TANAH
                 db.ref('edits_bidang_tanah_bandar_lampung').on('value', (snapshot) => {
                     const cloudBidangData = snapshot.val();
                     if (cloudBidangData) {
                         bidangData.features.forEach(bdg => {
                             const id = bdg.properties._id_bidang;
-                            // Inject data firebase ke properti bidang jika ID cocok
                             if (cloudBidangData[id]) { Object.assign(bdg.properties, cloudBidangData[id]); }
                         });
-                        // Trigger render ulang map
                         bidangData = { ...bidangData, features: [...bidangData.features] };
                         updateCounter++; updateMap();
                     }
@@ -477,7 +469,7 @@
                 NIB: document.getElementById('input-bdg-nib').value,
                 tipe_hak: document.getElementById('input-bdg-hak').value,
                 luas_bidang: parseFloat(document.getElementById('input-bdg-luas').value) || 0,
-                _is_edited: true // Flag merubah warna
+                _is_edited: true 
             };
 
             db.ref('edits_bidang_tanah_bandar_lampung/' + id).update(updatedProps)
@@ -541,7 +533,7 @@
                 fungsi: document.getElementById('input-fungsi').value,
                 tipe_hak: document.getElementById('input-hak').value,
                 status: document.getElementById('input-status').value,
-                _is_edited: true // Flag warna
+                _is_edited: true 
             };
 
             if (isNew) {
@@ -639,7 +631,7 @@
 
         function finishDrawing() {
             if (drawPoints.length < 3) return alert("Minimal buat 3 titik untuk jadi poligon!");
-            const polyCoords = [...drawPoints, drawPoints[0]]; 
+            const polyCoords = [...drawPoints, drawPoints[0]];
             const newFeature = turf.polygon([polyCoords], {
                 _id: 'bgn_baru_' + Date.now(), isNew: true, NIB: '', height_m: 4, luas_bangunan: 0, luas_bidang: 0, tipe_hak: '', status: '', fungsi: 'Permukiman'
             });
